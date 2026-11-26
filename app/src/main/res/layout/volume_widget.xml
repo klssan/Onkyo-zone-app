@@ -1,0 +1,7 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+ android:id="@+id/volume_widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
+ android:orientation="vertical" android:gravity="center" android:padding="4dp" android:background="@drawable/scene_background">
+ <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/dz_logo" android:contentDescription="@string/app_name"/>
+ <TextView android:id="@+id/volume_widget_name" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="Lautstärke" android:textColor="#F1F5F4" android:textSize="10sp" android:textStyle="bold" android:maxLines="2" android:ellipsize="end" android:includeFontPadding="false"/>
+ <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="Regler öffnen" android:textColor="#B5C8C7" android:textSize="9sp" android:singleLine="true" android:ellipsize="end" android:includeFontPadding="false"/>
+</LinearLayout>

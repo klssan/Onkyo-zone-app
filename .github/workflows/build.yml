@@ -42,7 +42,7 @@ jobs:
           TOOLS="$ANDROID_HOME/build-tools/35.0.0"
           "$TOOLS/aapt" dump badging "$APK" > /tmp/apk-info.txt
           cat /tmp/apk-info.txt
-          grep -F "package: name='at.local.dualzone' versionCode='12' versionName='0.7.0'" /tmp/apk-info.txt
+          grep -F "package: name='at.local.dualzone' versionCode='13' versionName='0.7.1'" /tmp/apk-info.txt
           grep -F "application-label:'Onkyo dahoam'" /tmp/apk-info.txt
           "$TOOLS/apksigner" verify --verbose --print-certs "$APK" | tee /tmp/new-cert.txt
           gh api repos/${{ github.repository }}/actions/artifacts/15144810897/zip > /tmp/old.zip
@@ -55,12 +55,12 @@ jobs:
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: Onkyo-dahoam-v0.7.0-debug
+          name: Onkyo-dahoam-v0.7.1-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
-          name: Onkyo-dahoam-v0.7.0-ui-test
+          name: Onkyo-dahoam-v0.7.1-ui-test
           path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           if-no-files-found: error
   emulator:
@@ -70,11 +70,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: Onkyo-dahoam-v0.7.0-debug
+          name: Onkyo-dahoam-v0.7.1-debug
           path: app/build/outputs/apk/debug
       - uses: actions/download-artifact@v4
         with:
-          name: Onkyo-dahoam-v0.7.0-ui-test
+          name: Onkyo-dahoam-v0.7.1-ui-test
           path: app/build/outputs/apk/androidTest/debug
       - name: Enable KVM
         run: |
@@ -97,12 +97,12 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: Onkyo-dahoam-v0.7.0-debug
+          name: Onkyo-dahoam-v0.7.1-debug
           path: release
       - name: Publish tested APK
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          mv release/app-debug.apk release/Onkyo-dahoam-v0.7.0.apk
-          gh release create v0.7.0 release/Onkyo-dahoam-v0.7.0.apk --target "${{ github.sha }}" --title "Onkyo dahoam 0.7.0" --notes "Automated JVM, APK identity/signature and Android emulator checks passed. Debug signing may differ from previous versions: uninstall the old app once before installing. Real receiver volume and launcher behavior still require device testing."
+          mv release/app-debug.apk release/Onkyo-dahoam-v0.7.1.apk
+          gh release create v0.7.1 release/Onkyo-dahoam-v0.7.1.apk --target "${{ github.sha }}" --title "Onkyo dahoam 0.7.1" --notes "Automated JVM, APK identity/signature and Android emulator checks passed. Debug signing may differ from previous versions: uninstall the old app once before installing. Real receiver volume and launcher behavior still require device testing."

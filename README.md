@@ -1,6 +1,9 @@
 # Onkyo dahoam
 Unofficial local Android controller for TX-NR656.
 
+## v0.7.1
+Two independent 1×1 volume widgets (Wohnzimmer and Esstisch). Tap opens a small real SeekBar dialog without launching the full dashboard. Android RemoteViews do not support draggable SeekBar; the tile itself is a shortcut and does not claim a live volume. The dialog checks connectivity and device profile before enabling controls, uses the existing coalesced volume commands, and never powers a zone on automatically. Widget and popup tests cover both zones.
+
 ## v0.7.0
 Onkyo dahoam branding; Wohnzimmer / Esstisch labels; live volume changes sampled up to every 10 ms (network writes coalesced per zone and paced at 120 ms); relative linked +/- only while Esstisch uses SOURCE. Dashboard controls follow the reported source: FM/AM presets, NET service and transport, USB/Bluetooth transport, Google TV launcher, or a read-only SOURCE indicator. Transport uses NTC/NTZ and remains experimental on the real receiver; shared media confirmation remains in place. Existing widgets and app ID retained. Listening modes include Dolby Surround/Atmos (LMD80) and DTS Neural:X/DTS:X (LMD82); Pure Audio only when Esstisch is confirmed off. Receiver firmware, speaker layout and input format determine availability; the app shows only receiver-reported current mode.
 

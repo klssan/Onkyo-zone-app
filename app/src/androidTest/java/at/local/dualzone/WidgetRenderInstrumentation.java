@@ -35,6 +35,14 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
    require(small.findViewById(R.id.scene_brand)!=null&&v.findViewById(R.id.scene_brand)!=null,"branding on both widget sizes");
    small.measure(View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY));small.layout(0,0,Math.round(64*d),Math.round(64*d));
    require(small.findViewById(R.id.scene_actions_text).getHeight()>0,"compact action height");
+   for(int zone=0;zone<2;zone++){
+    View volume=VolumeWidget.render(c,zone).apply(c,new FrameLayout(c));
+    require(value(volume,R.id.volume_widget_name).equals(VolumeWidget.name(zone)),"volume widget zone");
+    require(volume.findViewById(R.id.volume_widget_root).getContentDescription().toString().contains(VolumeWidget.name(zone)),"volume widget description");
+    require(VolumeWidget.intent(c,zone).getIntExtra("zone",-1)==zone,"widget targets correct zone");
+    volume.measure(View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY));volume.layout(0,0,Math.round(64*d),Math.round(64*d));
+    require(volume.findViewById(R.id.volume_widget_name).getHeight()>0,"volume widget label");
+   }
    RemoteViews reachable=SceneWidget.render(c,scene,WidgetStatus.connection(false,true,WidgetStatus.REACHABLE,now,true,now,null),WidgetStatus.execution("Teilweise (2)",now,false,0,false));
    View other=reachable.apply(c,new FrameLayout(c));require(value(other,R.id.scene_connection).contains("erreichbar")&&value(other,R.id.scene_status).contains("Teilweise"),"separate result");
   }catch(Throwable e){problem[0]=e;}});
@@ -67,6 +75,22 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
     }catch(Throwable e){problem[0]=e;}});
    }catch(Throwable e){problem[0]=e;}
    finally{if(activity!=null){final MainActivity a=activity;runOnMainSync(a::finish);}}
+  }
+  for(int zone=0;zone<2&&problem[0]==null;zone++){
+   VolumeActivity popup=null;
+   try{
+    final int selected=zone;
+    popup=(VolumeActivity)startActivitySync(VolumeWidget.intent(getTargetContext(),zone));
+    final VolumeActivity a=popup;
+    runOnMainSync(()->{try{
+     require(a.popupZone==selected,"popup zone");
+     a.disconnect();a.render();require(!a.zones[selected].slider.isEnabled(),"offline popup disabled");
+     a.startDemo();require(a.zones[selected].slider.isEnabled(),"popup slider enabled");
+     int other=a.zones[1-selected].vol;
+     a.dragVolume(selected,42,false);require(a.zones[selected].vol==42&&a.zones[1-selected].vol==other,"popup controls only selected zone");
+    }catch(Throwable e){problem[0]=e;}});
+   }catch(Throwable e){problem[0]=e;}
+   finally{if(popup!=null){final VolumeActivity a=popup;runOnMainSync(a::finish);}}
   }
   if(problem[0]==null){result.putString("widget_render_ok","true");finish(Activity.RESULT_OK,result);}
   else{result.putString("widget_render_error",problem[0].toString());finish(Activity.RESULT_CANCELED,result);}
