@@ -30,7 +30,7 @@ public class MainActivity extends Activity {
  void weighted(LinearLayout r,View v,int h){r.addView(v,new LinearLayout.LayoutParams(0,h<0?h:dp(h),1));}
  void gap(LinearLayout r,int h){add(r,new View(this),1,h);}
  void hgap(LinearLayout r,int w){add(r,new View(this),w,1);}
- @Override public void onCreate(Bundle b){super.onCreate(b);Diagnostics.open(getFilesDir());Diagnostics.event("APP","v0.4 Android API="+Build.VERSION.SDK_INT+" screenDp="+getResources().getConfiguration().screenWidthDp+"x"+getResources().getConfiguration().screenHeightDp);prefs=getSharedPreferences("config",MODE_PRIVATE);
+ @Override public void onCreate(Bundle b){super.onCreate(b);Diagnostics.open(getFilesDir());Diagnostics.event("APP","v0.4.1 Android API="+Build.VERSION.SDK_INT+" screenDp="+getResources().getConfiguration().screenWidthDp+"x"+getResources().getConfiguration().screenHeightDp);prefs=getSharedPreferences("config",MODE_PRIVATE);
   getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
   LinearLayout root=col();root.setBackgroundColor(BG);root.setPadding(dp(12),dp(6),dp(12),dp(6));dashboard=root;setContentView(root);
   LinearLayout head=row();TextView title=label("TX-NR656",22,FG);title.setTypeface(null,Typeface.BOLD);weighted(head,title,44);
@@ -118,11 +118,11 @@ public class MainActivity extends Activity {
  }).show();}
  void diagnosticsDialog(){
   Diagnostics.event("UI","diagnostics opened");
-  String info="Lokales Protokoll · bis ca. 256 KB, auch nach App-Neustart.\nEnthält Befehle, Status, Fehler, Zeitpunkte und Geräteprofil. Keine IP/MAC, WLAN-Namen, Zugangsdaten oder Mediennamen. Nur auf deinen Wunsch exportiert.";
+  String info="Lokales Protokoll · max. 256 KiB · automatische Löschung nach spätestens 72 Stunden bei laufender App. Bei wenig Speicher wird die Aufzeichnung pausiert.\nEnthält Befehle, Status, Fehler, Zeitpunkte und Geräteprofil. Keine IP/MAC, WLAN-Namen, Zugangsdaten oder Mediennamen. Nur auf deinen Wunsch exportiert.";
   try{String s=Diagnostics.snapshot();info+="\n\nLetzte Einträge:\n"+s.substring(Math.max(0,s.length()-1300));}catch(java.io.IOException e){Diagnostics.error("LOG_READ_ERROR",e);}
   TextView t=label(info,13,FG);t.setPadding(dp(16),dp(8),dp(16),dp(8));t.setTextIsSelectable(true);ScrollView sc=new ScrollView(this);sc.addView(t);
   new AlertDialog.Builder(this).setTitle("Diagnosebericht").setView(sc)
-   .setPositiveButton("TXT exportieren",(d,n)->{Diagnostics.event("UI","export requested");Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("text/plain");i.addCategory(Intent.CATEGORY_OPENABLE);i.putExtra(Intent.EXTRA_TITLE,"Onkyo-Diagnose-v0.4.txt");try{startActivityForResult(i,404);}catch(ActivityNotFoundException e){Diagnostics.error("EXPORT_ERROR",e);Toast.makeText(this,"Dateiauswahl nicht verfügbar",Toast.LENGTH_LONG).show();}})
+   .setPositiveButton("TXT exportieren",(d,n)->{Diagnostics.event("UI","export requested");Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("text/plain");i.addCategory(Intent.CATEGORY_OPENABLE);i.putExtra(Intent.EXTRA_TITLE,"Onkyo-Diagnose-v0.4.1.txt");try{startActivityForResult(i,404);}catch(ActivityNotFoundException e){Diagnostics.error("EXPORT_ERROR",e);Toast.makeText(this,"Dateiauswahl nicht verfügbar",Toast.LENGTH_LONG).show();}})
    .setNeutralButton("Log löschen",(d,n)->new AlertDialog.Builder(this).setMessage("Alle bisherigen Diagnoseeinträge löschen?").setNegativeButton("Abbrechen",null).setPositiveButton("Löschen",(x,y)->{try{Diagnostics.clear();}catch(java.io.IOException e){Diagnostics.error("LOG_CLEAR_ERROR",e);}}).show()).setNegativeButton("Schließen",null).show();
  }
  @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request!=404||result!=RESULT_OK||data==null||data.getData()==null)return;
