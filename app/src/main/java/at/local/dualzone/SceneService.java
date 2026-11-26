@@ -35,9 +35,9 @@ public final class SceneService extends Service {
     if(scene.demo){scene.validate();Diagnostics.event("WIDGET","demo; no network commands");result="Demo · keine Befehle";}
     else{int count=runScene(scene,checkOnly,job,id);Diagnostics.event("WIDGET","observed actions="+count);result=count==-1?"Bestätigt · Aus":scene.radioToggleZone()>=0?"Bestätigt · An":"Bestätigt";}
    }catch(SceneExecutor.SceneException e){
-    Diagnostics.event("WIDGET","not confirmed; observed actions="+e.confirmed);
+    Diagnostics.event("WIDGET","not confirmed; observed actions="+e.confirmed+" reason="+safeSceneError(e.getMessage()));
     result=(e.confirmed>0?"Teilweise ("+e.confirmed+")":"Nicht bestätigt")+" · "+safeSceneError(e.getMessage());
-   }catch(LocalFailure e){Diagnostics.event("WIDGET","preflight blocked");result="Nicht ausgeführt · "+e.getMessage();}
+   }catch(LocalFailure e){Diagnostics.event("WIDGET","preflight blocked reason="+e.getMessage());result="Nicht ausgeführt · "+e.getMessage();}
    catch(Exception e){Diagnostics.error("WIDGET_ERROR",e);result="Nicht bestätigt · Receiver prüfen";}
    final String message=result;
    main.post(()->{

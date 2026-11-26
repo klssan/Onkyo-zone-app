@@ -2,7 +2,7 @@
 Unofficial local Android controller for TX-NR656.
 
 ## v0.7.3
-Permanent signing baseline. CI requires the encrypted repository secret ONKYO_KEYSTORE_B64; see [SIGNING.md](SIGNING.md). Subsequent releases require a matching certificate, increasing versionCode and an emulator in-place upgrade that preserves app data. One final uninstall may be required to migrate from v0.7.2 or earlier.
+Simplified scene widgets at every size: existing logo as a faint background, large title, compact status, no zone or preset details. Volume shortcuts use the same background style and retain their zone names for identification. Configuration warns when a source is selected with power unchanged. Widget errors record the reason; inactive-zone errors display "Zone aus". Temporary debug signing is permitted until a permanent key is configured; once a permanently signed release exists, certificate matching and in-place upgrade tests are mandatory. See [SIGNING.md](SIGNING.md).
 
 ## v0.7.2
 Compact, top-aligned scrollable zone cards, full-width sliders with numeric readout, consistent source and playback control spacing. No per-zone +/- buttons in dashboard or widget slider dialogs. The shared relative +/- controls remain in a separate fixed bottom row only when Esstisch follows SOURCE, enabled only when both zones support volume. No change to connection or playback protocol.

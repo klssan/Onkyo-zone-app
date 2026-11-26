@@ -20,21 +20,19 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
    RemoteViews views=SceneWidget.render(c,scene,WidgetStatus.connection(false,false,WidgetStatus.REACHABLE,now,true,now,null),last);
    View v=views.apply(c,new FrameLayout(c));
    require(value(v,R.id.scene_name).equals("FM4 Küche"),"name");
-   require(value(v,R.id.scene_main).equals("Wohnzimmer: Unverändert"),"main unchanged");
-   require(value(v,R.id.scene_second).equals("Esstisch: An · FM P04 · Vol. 40"),"configured action");
-   require(value(v,R.id.scene_connection).equals("Kein WLAN/LAN"),"offline");
-   require(value(v,R.id.scene_status).contains("Bestätigt"),"previous run retained");
+   require(value(v,R.id.scene_status).equals("Offline"),"offline");
    require(v.findViewById(R.id.scene_check).getVisibility()==View.VISIBLE,"read-only check visible");
-   require(v.findViewById(R.id.scene_shared).getVisibility()==View.GONE,"shared flag");
    float d=c.getResources().getDisplayMetrics().density;int width=Math.round(300*d),height=Math.round(200*d);
    v.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(height,View.MeasureSpec.EXACTLY));v.layout(0,0,width,height);
-   for(int id:new int[]{R.id.scene_name,R.id.scene_main,R.id.scene_second,R.id.scene_connection,R.id.scene_status}){View item=v.findViewById(id);require(item.getHeight()>0&&item.getWidth()>0,"clipped widget row "+id);}
+   for(int id:new int[]{R.id.scene_name,R.id.scene_status}){View item=v.findViewById(id);require(item.getHeight()>0&&item.getWidth()>0,"clipped widget row "+id);}
    View small=SceneWidget.compact(c,scene,WidgetStatus.connection(false,false,WidgetStatus.REACHABLE,now,true,now,null),last).apply(c,new FrameLayout(c));
-   require(value(small,R.id.scene_actions_text).equals("ET FM4 · 40"),"compact action");
+   require(value(small,R.id.scene_name).equals("FM4 Küche"),"title only");
    require(value(small,R.id.scene_status).equals("Offline"),"compact offline");
    require(small.findViewById(R.id.scene_brand)!=null&&v.findViewById(R.id.scene_brand)!=null,"branding on both widget sizes");
+   require(small.findViewById(R.id.scene_brand).getAlpha()<0.3f,"subtle background logo");
    small.measure(View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY));small.layout(0,0,Math.round(64*d),Math.round(64*d));
-   require(small.findViewById(R.id.scene_actions_text).getHeight()>0,"compact action height");
+   require(small.findViewById(R.id.scene_name).getHeight()>0&&small.findViewById(R.id.scene_status).getHeight()>0,"compact title and status");
+   require(((TextView)small.findViewById(R.id.scene_name)).getTextSize()>((TextView)small.findViewById(R.id.scene_status)).getTextSize(),"title more prominent");
    for(int zone=0;zone<2;zone++){
     View volume=VolumeWidget.render(c,zone).apply(c,new FrameLayout(c));
     require(value(volume,R.id.volume_widget_name).equals(VolumeWidget.name(zone)),"volume widget zone");
@@ -44,7 +42,7 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
     require(volume.findViewById(R.id.volume_widget_name).getHeight()>0,"volume widget label");
    }
    RemoteViews reachable=SceneWidget.render(c,scene,WidgetStatus.connection(false,true,WidgetStatus.REACHABLE,now,true,now,null),WidgetStatus.execution("Teilweise (2)",now,false,0,false));
-   View other=reachable.apply(c,new FrameLayout(c));require(value(other,R.id.scene_connection).contains("erreichbar")&&value(other,R.id.scene_status).contains("Teilweise"),"separate result");
+   View other=reachable.apply(c,new FrameLayout(c));require(value(other,R.id.scene_status).contains("Teilweise"),"partial result");require(other.findViewById(R.id.scene_run).getContentDescription().toString().contains("erreichbar"),"accessible full status");
   }catch(Throwable e){problem[0]=e;}});
   if(problem[0]==null){
    MainActivity activity=null;

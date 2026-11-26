@@ -37,30 +37,16 @@ public final class SceneWidget extends AppWidgetProvider {
  }
  static synchronized void stopMonitor(Context c){if(monitor!=null){try{c.getSystemService(ConnectivityManager.class).unregisterNetworkCallback(monitor);}catch(RuntimeException ignored){}monitor=null;}}
  static int color(int tone){switch(tone){case WidgetStatus.GOOD:return 0xff7bd8bc;case WidgetStatus.WARN:return 0xffffbd85;case WidgetStatus.ERROR:return 0xffffa59f;default:return 0xffc2d0d1;}}
- static RemoteViews render(Context c,Scene scene,WidgetStatus.Line connection,WidgetStatus.Line execution){
-  RemoteViews v=new RemoteViews(c.getPackageName(),R.layout.scene_widget);
-  v.setTextViewText(R.id.scene_name,scene==null?"Onkyo dahoam Szene":scene.name);
-  v.setTextViewText(R.id.scene_main,scene==null?"Wohnzimmer: —":"Wohnzimmer: "+scene.zoneSummary(0));
-  v.setTextViewText(R.id.scene_second,scene==null?"Esstisch: —":"Esstisch: "+scene.zoneSummary(1));
-  v.setTextViewText(R.id.scene_connection,scene==null?"Tippen zum Einrichten":connection.text);
-  v.setTextColor(R.id.scene_connection,color(scene==null?WidgetStatus.NEUTRAL:connection.tone));
-  v.setTextViewText(R.id.scene_status,scene==null?"":execution.text);
-  v.setTextColor(R.id.scene_status,color(execution.tone));
-  v.setTextViewText(R.id.scene_shared,scene!=null&&scene.share?"Gemeinsame Quellen erlaubt":"");
-  v.setViewVisibility(R.id.scene_shared,scene!=null&&scene.share?View.VISIBLE:View.GONE);
-  v.setViewVisibility(R.id.scene_check,scene==null?View.GONE:View.VISIBLE);
-  String symbol="▶";if(scene!=null){switch(scene.icon){case "Radio":symbol="♫";break;case "Musik":symbol="♪";break;case "TV":symbol="TV";break;case "Haus":symbol="⌂";break;case "Power":symbol="⏻";break;}}
-  v.setTextViewText(R.id.scene_icon,symbol);
-  return v;
- }
- static RemoteViews compact(Context c,Scene scene,WidgetStatus.Line connection,WidgetStatus.Line execution){
-  RemoteViews v=new RemoteViews(c.getPackageName(),R.layout.scene_widget_small);
+ static RemoteViews render(Context c,Scene scene,WidgetStatus.Line connection,WidgetStatus.Line execution){return tile(c,scene,connection,execution,false);}
+ static RemoteViews compact(Context c,Scene scene,WidgetStatus.Line connection,WidgetStatus.Line execution){return tile(c,scene,connection,execution,true);}
+ static RemoteViews tile(Context c,Scene scene,WidgetStatus.Line connection,WidgetStatus.Line execution,boolean small){
+  RemoteViews v=new RemoteViews(c.getPackageName(),small?R.layout.scene_widget_small:R.layout.scene_widget);
   v.setTextViewText(R.id.scene_name,scene==null?"Einrichten":scene.name);
-  v.setTextViewText(R.id.scene_actions_text,scene==null?"":scene.compactSummary());
   WidgetStatus.Line state=WidgetStatus.compact(connection,execution);
   v.setTextViewText(R.id.scene_status,scene==null?"":state.text);
   v.setTextColor(R.id.scene_status,color(state.tone));
-  v.setContentDescription(R.id.scene_run,scene==null?"Onkyo dahoam Szene einrichten":scene.name+". "+scene.summary()+". "+connection.text+". "+execution.text);
+  v.setContentDescription(R.id.scene_run,scene==null?"Onkyo dahoam Szene einrichten":scene.name+". "+connection.text+". "+execution.text);
+  v.setContentDescription(R.id.scene_status,scene==null?"":connection.text+". "+execution.text);
   v.setViewVisibility(R.id.scene_check,scene==null?View.GONE:View.VISIBLE);
   return v;
  }
@@ -72,14 +58,13 @@ public final class SceneWidget extends AppWidgetProvider {
   Intent edit=new Intent(c,SceneConfigActivity.class).setAction(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).setData(Uri.parse("onkyo://edit/"+id)).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
   PendingIntent editPI=PendingIntent.getActivity(c,id,edit,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
   v.setOnClickPendingIntent(R.id.scene_edit,editPI);
-  if(scene==null){v.setOnClickPendingIntent(R.id.scene_run,editPI);if(!small)v.setOnClickPendingIntent(R.id.scene_actions,editPI);}
+  if(scene==null){v.setOnClickPendingIntent(R.id.scene_run,editPI);}
   else{
    Intent run=new Intent(c,SceneService.class).setAction(RUN).setData(Uri.parse("onkyo://run/"+id)).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id);
    Intent check=new Intent(c,SceneService.class).setAction(CHECK).setData(Uri.parse("onkyo://check/"+id)).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id);
    v.setOnClickPendingIntent(R.id.scene_run,PendingIntent.getForegroundService(c,id,run,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE));
-   if(!small)v.setOnClickPendingIntent(R.id.scene_actions,PendingIntent.getForegroundService(c,id,run,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE));
    v.setOnClickPendingIntent(R.id.scene_check,PendingIntent.getForegroundService(c,id,check,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE));
-   if(small)v.setOnClickPendingIntent(R.id.scene_status,PendingIntent.getForegroundService(c,id,run,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE));
+   v.setOnClickPendingIntent(R.id.scene_status,PendingIntent.getForegroundService(c,id,run,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE));
   }
   AppWidgetManager.getInstance(c).updateAppWidget(id,v);
  }

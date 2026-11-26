@@ -22,6 +22,7 @@ public class WidgetStatusTest {
   check(WidgetStatus.execution("Bestätigt",now,true,now,true).text.contains("Bestätigt"));
   check(WidgetStatus.execution("Teilweise (2)",now,false,0,false).tone==WidgetStatus.WARN);
   check(WidgetStatus.execution("",0,false,0,false).text.contains("kein Ausführungsergebnis"));
+  check(WidgetStatus.compact(connection(false,true,WidgetStatus.REACHABLE,now,true,now,null),WidgetStatus.execution("Nicht bestätigt · Zone ausgeschaltet",now,false,0,false)).text.equals("Zone aus"));
   Scene scene=new Scene("FM4","Radio",new Scene.Zone(Scene.KEEP,"",-1,-1,""),new Scene.Zone(Scene.ON,"24",40,4,""),false,false);
   check(scene.zoneSummary(0).equals("Unverändert"));
   check(scene.zoneSummary(1).equals("An · FM P04 · Vol. 40"));

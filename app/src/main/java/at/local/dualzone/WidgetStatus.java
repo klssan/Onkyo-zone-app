@@ -36,6 +36,8 @@ final class WidgetStatus {
   if(c.contains("nicht gefunden")||c.contains("nicht erreichbar"))return new Line("Onkyo offline",WARN);
   if(c.contains("keine Statusantwort")||c.contains("fehlgeschlagen")||c.contains("falsches Gerät")||c.contains("unklar"))return new Line("Fehler",WARN);
   if(c.contains("auswählen"))return new Line("Gerät wählen",WARN);
+  if(e.contains("Zone ausgeschaltet"))return new Line("Zone aus",WARN);
+  if(e.contains("Gemeinsame Medienquelle")||e.contains("Gemeinsamer FM/AM-Tuner")||e.contains("SOURCE folgt Wohnzimmer"))return new Line("Quelle geteilt",WARN);
   if(e.contains("Teilweise"))return new Line("Teilweise",WARN);
   if(e.contains("nicht bestätigt")||e.contains("Nicht bestätigt")||e.contains("Nicht ausgeführt")||e.contains("Zeitlimit"))return new Line("Fehler",WARN);
   if(c.startsWith("Onkyo ungeprüft"))return new Line("Prüfen",NEUTRAL);
