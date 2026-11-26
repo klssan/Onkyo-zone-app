@@ -43,8 +43,8 @@ final class Receiver implements AutoCloseable {
  private synchronized void observe(String msg){
   expire();if(msg.length()<4)return;String k=msg.substring(0,3);Pending p=pending.get(k);if(p==null)return;
   String param=p.command.substring(3),value=msg.substring(3);
-  boolean query=param.equals("QSTN"),absolute=param.matches("[0-9A-Fa-f]{2}"),na=value.equals("N/A");
-  if(!query&&absolute&&!param.equalsIgnoreCase(value)&&!na)return;
+  boolean query=param.equals("QSTN"),vol=k.equals("MVL")||k.equals("ZVL"),absolute=param.matches("[0-9A-Fa-f]{2}")||vol&&param.matches("[0-9A-Fa-f]{3}"),na=value.equals("N/A");
+  if(!query&&absolute&&!param.equalsIgnoreCase(value)&&!(vol&&Protocol.volumeMatches(param,value))&&!na)return;
   pending.remove(k);
   Diagnostics.event(na?"UNAVAILABLE":"OBSERVED",Diagnostics.wire(p.command)+" -> "+Diagnostics.wire(msg)+" ms="+((System.nanoTime()-p.time)/1000000));
  }

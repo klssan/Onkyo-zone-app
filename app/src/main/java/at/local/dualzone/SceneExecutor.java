@@ -7,9 +7,11 @@ final class SceneExecutor {
  interface Wire {String query(String prefix)throws IOException;void set(String command,String expectedPrefix,String expectedValue)throws IOException;}
  static final class SceneException extends IOException{final int confirmed;SceneException(String text,int confirmed){super(text);this.confirmed=confirmed;}}
  static void checkReceiver(Wire wire)throws IOException{String power=wire.query("PWR");if(!power.equals("00")&&!power.equals("01"))throw new IOException("Keine gültige Statusantwort");}
- static int execute(Scene scene,Wire wire)throws IOException{
+ static int execute(Scene scene,Wire wire)throws IOException{return execute(scene,wire,null);}
+ static int execute(Scene scene,Wire wire,Capabilities profile)throws IOException{
   scene.validate();String[] power=new String[2],source=new String[2];int confirmed=0;
   try{
+   for(int i=0;i<2;i++){Scene.Zone z=scene.zones[i];if(z.volume>=0){int scale=profile==null?1:profile.volumeScale[i];int max=Protocol.maxVolume(profile==null?0:profile.volumeMax[i],scale,0);if(z.volume*scale>max)throw new IOException("Lautstärke über Geräte-Maximum");}}
    for(int i=0;i<2;i++){String pp=i==0?"PWR":"ZPW";power[i]=wire.query(pp);if(!power[i].equals("00")&&!power[i].equals("01"))throw new IOException("Zonenstatus unbekannt");}
    for(int i=0;i<2;i++){Scene.Zone z=scene.zones[i];if(z.settings()&&z.power==Scene.KEEP&&power[i].equals("00"))throw new IOException("Zone ausgeschaltet");}
    for(int i=0;i<2;i++){String sp=i==0?"SLI":"SLZ";source[i]=power[i].equals("01")?wire.query(sp):"";if(power[i].equals("01")&&!source[i].matches("[0-9A-Fa-f]{2}"))throw new IOException("Quelle unbekannt");}
@@ -26,7 +28,7 @@ final class SceneExecutor {
    for(int i=1;i>=0;i--)if(scene.zones[i].power==Scene.OFF){String p=i==0?"PWR":"ZPW";wire.set(p+"00",p,"00");confirmed++;}
    for(int i=0;i<2;i++)if(scene.zones[i].power==Scene.ON){String p=i==0?"PWR":"ZPW";wire.set(p+"01",p,"01");confirmed++;}
    // Reduce / set requested volume before selecting a source; if fixed or unsupported, stop.
-   for(int i=0;i<2;i++){Scene.Zone z=scene.zones[i];if(z.volume>=0){String p=i==0?"MVL":"ZVL",v=Protocol.hex(z.volume);wire.set(p+v,p,v);confirmed++;}}
+   for(int i=0;i<2;i++){Scene.Zone z=scene.zones[i];if(z.volume>=0){String p=i==0?"MVL":"ZVL",v=Protocol.hex(z.volume*(profile==null?1:profile.volumeScale[i]));wire.set(p+v,p,v);confirmed++;}}
    for(int i=0;i<2;i++){Scene.Zone z=scene.zones[i];if(!z.source.isEmpty()){String p=i==0?"SLI":"SLZ";wire.set(p+z.source,p,z.source);confirmed++;}}
    for(int i=0;i<2;i++){Scene.Zone z=scene.zones[i];if(z.preset>0){String p=i==0?"PRS":"PRZ",v=Protocol.hex(z.preset);wire.set(p+v,p,v);confirmed++;}
     if(!z.service.isEmpty()){wire.set("NSV"+z.service+"0","NMS",z.service);confirmed++;}}
@@ -42,7 +44,7 @@ final class SceneExecutor {
     if(!msg.startsWith(prefix))continue;String v=msg.substring(3);
     if(v.equals("N/A"))throw new IOException("Nicht verfügbar: "+prefix);
     if(prefix.equals("NMS")){if(v.length()<9)continue;v=v.substring(7,9);}
-    if(expected==null||expected.equalsIgnoreCase(v))return prefix.equals("NRI")?v:v.toUpperCase(Locale.ROOT);
+    if(expected==null||expected.equalsIgnoreCase(v)||((prefix.equals("MVL")||prefix.equals("ZVL"))&&Protocol.volumeMatches(expected,v)))return prefix.equals("NRI")?v:v.toUpperCase(Locale.ROOT);
    }throw new SocketTimeoutException();
   }
   long end(int ms){return Math.min(deadline,System.nanoTime()+ms*1000000L);}

@@ -1,6 +1,8 @@
 # Onkyo Dual Zone
 Unofficial local Android controller for TX-NR656.
 
+## v0.5.2
+Fix volume controls locking above 50. Use per-zone NRI volume limits and step scale, support two- and three-digit ISCP volume replies, and keep requested values visible until a reply or timeout. Without a positive NRI maximum, use the protocol range (100 whole units), never assume zero means a usable maximum. Volume unavailable is reported separately. The receiver's hardware maximum remains authoritative. Widget scene volumes use whole units and respect reported maxima at execution. Live volume confirmation still pending. Detail panels now follow the effective selected source: FM/AM shows tuner preset controls (receiver-reported names/frequencies when available), NET shows only the NET service selector, other sources hide both; SOURCE follows the main zone. Shared media changes require confirmation.
 ## v0.5.1
 Widgets always show both zones' configured actions, including unchanged settings. The connection check and the last scene execution are separate. Tap refresh to perform read-only discovery and receiver status queries; it never runs the scene. Actual receiver checks are timestamped, not a claim of continuous live connectivity. Local network state updates on app/launcher refresh and on network callbacks while the process is active; Android can defer the 30-minute widget refresh while the app is closed. No periodic receiver polling or persistent foreground service. Scene failures and interruptions do not imply success. Reconfiguration resets the scene's execution history.
 ## v0.5

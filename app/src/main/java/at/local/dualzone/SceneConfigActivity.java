@@ -21,7 +21,7 @@ public final class SceneConfigActivity extends Activity {
    text(root,"Power",14);power=spin(root,new String[]{"Unverändert","Einschalten","Ausschalten"},old.power);
    ArrayList<String> cs=new ArrayList<>(),ns=new ArrayList<>();for(int i=0;i<Scene.SOURCE_CODES.length;i++){String k=Scene.SOURCE_CODES[i];if(index==0&&k.equals("80")||index==1&&k.equals("05"))continue;cs.add(k);ns.add(Scene.SOURCE_NAMES[i]);}codes=cs.toArray(new String[0]);
    text(root,"Quelle",14);source=spin(root,ns.toArray(new String[0]),cs.indexOf(old.source));
-   text(root,"Lautstärke (leer = unverändert, max. 50)",14);volume=input(root,"0–50",old.volume<0?"":""+old.volume,true);
+   text(root,"Lautstärke (leer = unverändert, Geräte-Maximum gilt)",14);volume=input(root,"0–100",old.volume<0?"":""+old.volume,true);
    text(root,"FM/AM-Speicherplatz (optional, 1–40)",14);preset=input(root,"z. B. 4",old.preset<0?"":""+old.preset,true);
    text(root,"NET-Dienst (optional)",14);service=spin(root,Scene.NET_NAMES,Arrays.asList(services).indexOf(old.service));
    AdapterView.OnItemSelectedListener change=new AdapterView.OnItemSelectedListener(){public void onItemSelected(AdapterView<?> p,View v,int pos,long row){update();}public void onNothingSelected(AdapterView<?> p){}};

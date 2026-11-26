@@ -51,7 +51,7 @@ public final class SceneService extends Service {
  static String safeSceneError(String message){
   if(message==null)return "Receiver antwortet nicht";
   if(message.matches("(Status fehlt|Nicht bestätigt|Nicht verfügbar): [A-Z0-9]{3}"))return message;
-  if(Arrays.asList("Zonenstatus unbekannt","Zone ausgeschaltet","Quelle unbekannt","SOURCE folgt Hauptzone","Gemeinsame Medienquelle","Gemeinsamer FM/AM-Tuner").contains(message))return message;
+  if(Arrays.asList("Zonenstatus unbekannt","Zone ausgeschaltet","Quelle unbekannt","SOURCE folgt Hauptzone","Gemeinsame Medienquelle","Gemeinsamer FM/AM-Tuner","Lautstärke über Geräte-Maximum").contains(message))return message;
   return "Receiver antwortet nicht";
  }
  void phase(int job,int id,String value){main.post(()->{if(running&&token==job&&activeId==id)SceneWidget.phase(this,id,value);});}
@@ -95,7 +95,7 @@ public final class SceneService extends Service {
       if(profile.hasServices&&!setting.service.isEmpty()&&!profile.services(z).containsKey(setting.service))throw new LocalFailure("NET-Dienst nicht unterstützt",null);
      }
      phase(job,id,"Szene wird ausgeführt …");
-     int count=SceneExecutor.execute(scene,wire);probe(job,WidgetStatus.REACHABLE,handle,target);return count;
+     int count=SceneExecutor.execute(scene,wire,profile);probe(job,WidgetStatus.REACHABLE,handle,target);return count;
     }
    }finally{activeSocket=null;}
   }catch(SceneExecutor.SceneException e){throw e;}

@@ -19,7 +19,7 @@ public class SceneTest {
   Fake shared=new Fake();shared.state.put("SLI","24");try{SceneExecutor.execute(scene,shared);throw new AssertionError("shared FM");}catch(SceneExecutor.SceneException e){check(e.confirmed==0&&shared.writes.isEmpty());}
   Scene allowed=new Scene("FM4","Radio",keep(),fm(),true,false);check(SceneExecutor.execute(allowed,shared)==4);
   Fake partial=new Fake();partial.fail="SLZ";try{SceneExecutor.execute(scene,partial);throw new AssertionError();}catch(SceneExecutor.SceneException e){check(e.confirmed==2&&partial.writes.size()==3);}
-  try{new Scene("unsafe","Radio",keep(),new Scene.Zone(Scene.ON,"24",51,4,""),true,false);throw new AssertionError();}catch(IllegalArgumentException ok){}
+  try{new Scene("unsafe","Radio",keep(),new Scene.Zone(Scene.ON,"24",101,4,""),true,false);throw new AssertionError();}catch(IllegalArgumentException ok){}
   try{new Scene("bad","Radio",keep(),new Scene.Zone(Scene.ON,"05",20,-1,""),true,false);throw new AssertionError();}catch(IllegalArgumentException ok){}
   Scene off=new Scene("Alles aus","Power",new Scene.Zone(Scene.OFF,"",-1,-1,""),new Scene.Zone(Scene.OFF,"",-1,-1,""),false,false);Fake offWire=new Fake();check(SceneExecutor.execute(off,offWire)==2&&offWire.writes.equals(Arrays.asList("ZPW00","PWR00")));
   // Real TCP, fragmented response and matching set reply.

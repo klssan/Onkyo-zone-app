@@ -2,7 +2,7 @@ package at.local.dualzone;
 import java.util.*;
 /** Immutable, validated scene. Empty source/service and -1 volume/preset mean unchanged. */
 final class Scene {
- static final int KEEP=0,ON=1,OFF=2,CAP=50;
+ static final int KEEP=0,ON=1,OFF=2,CAP=100;
  static final String[] SOURCE_CODES={"","10","01","02","11","05","03","12","23","22","24","25","2B","2E","80"};
  static final String[] SOURCE_NAMES={"Unverändert","BD/DVD","CBL/SAT","GAME","STRM BOX","PC","AUX","TV","CD","PHONO","FM","AM","NET","Bluetooth","SOURCE"};
  static final String[] NET_CODES={"","0E","0A","00","F0","12","1B"};
