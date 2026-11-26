@@ -9,7 +9,7 @@ final class Capabilities {
   final String id,name;final int zones;
   Entry(String id,String name,int zones){this.id=id;this.name=name;this.zones=zones;}
  }
- final String model;boolean hasSelectors,hasServices,hasControls;
+ final String model;String firmware="unknown";boolean hasSelectors,hasServices,hasControls;
  final List<Entry> selectors=new ArrayList<>(),net=new ArrayList<>(),controls=new ArrayList<>();
  Capabilities(String model){this.model=model;}
  static int mask(String value,int fallback){try{return value.isEmpty()?fallback:Integer.parseInt(value,16);}catch(NumberFormatException e){return 0;}}
@@ -24,7 +24,7 @@ final class Capabilities {
   if(!root.getTagName().equals("response")||!root.getAttribute("status").equals("ok"))throw new IllegalArgumentException("NRI status");
   Element device=child(root,"device");if(device==null)throw new IllegalArgumentException("NRI device");
   Element modelElement=child(device,"model");String model=modelElement==null?device.getAttribute("id"):modelElement.getTextContent().trim();if(model.isEmpty())throw new IllegalArgumentException("NRI model");
-  Capabilities c=new Capabilities(model);
+  Capabilities c=new Capabilities(model);Element fw=child(device,"firmwareversion");if(fw!=null&&fw.getTextContent().trim().matches("[0-9-]{5,40}"))c.firmware=fw.getTextContent().trim();
   c.hasSelectors=load(child(device,"selectorlist"),"selector",c.selectors,3,false);
   c.hasServices=load(child(device,"netservicelist"),"netservice",c.net,3,true);
   c.hasControls=load(child(device,"controllist"),"control",c.controls,3,false);
@@ -47,6 +47,9 @@ final class Capabilities {
  String serviceName(String code){return name(net,code);}
  static String name(List<Entry> entries,String code){for(Entry e:entries)if(e.id.equals(code))return e.name;return null;}
  boolean control(String id,int zone){for(Entry e:controls)if(e.id.equals(id)&&(e.zones&(1<<zone))!=0)return true;return false;}
+ String summary(){StringBuilder s=new StringBuilder("TX-NR656 firmware="+firmware+" selectors="+hasSelectors+" services="+hasServices+" controls="+hasControls);
+  for(int z=0;z<2;z++){s.append(" zone").append(z+1).append(" sources=").append(sources(z).keySet()).append(" net=").append(services(z).keySet());for(String k:new String[]{"Bass","Treble","Center Level","Subwoofer Level","TUNER Control","Music Optimizer","LMD Stereo","LMD Direct","LMD Pure Audio"})s.append(" ").append(k).append("=").append(control(k,z));}
+  return s.toString();}
  static Capabilities demo(){
   Capabilities c=new Capabilities("TX-NR656");c.hasSelectors=c.hasServices=c.hasControls=true;
   String[] ids={"10","01","02","11","05","03","25","24","23","12","22","2B","2E","80"};

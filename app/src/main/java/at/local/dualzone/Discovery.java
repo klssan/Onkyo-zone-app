@@ -25,13 +25,13 @@ final class Discovery {
   int ip=ByteBuffer.wrap(b).getInt();return InetAddress.getByAddress(ByteBuffer.allocate(4).putInt(ip|~mask).array());
  }
  static List<Device> find(DatagramSocket socket,List<InetAddress> targets,int timeout)throws IOException{
-  socket.setBroadcast(true);LinkedHashSet<InetAddress> all=new LinkedHashSet<>(targets);all.add(InetAddress.getByName("255.255.255.255"));
+  socket.setBroadcast(true);Diagnostics.event("UDP","discovery broadcast");LinkedHashSet<InetAddress> all=new LinkedHashSet<>(targets);all.add(InetAddress.getByName("255.255.255.255"));
   byte[] query=packet("!xECNQSTN");int sent=0;IOException failure=null;
-  for(InetAddress target:all)try{socket.send(new DatagramPacket(query,query.length,target,60128));sent++;}catch(IOException e){failure=e;}
+  for(InetAddress target:all)try{socket.send(new DatagramPacket(query,query.length,target,60128));sent++;}catch(IOException e){Diagnostics.error("UDP_SEND_ERROR",e);failure=e;}
   if(sent==0&&failure!=null)throw failure;
   LinkedHashMap<String,Device> devices=new LinkedHashMap<>();long until=System.nanoTime()+timeout*1000000L;
   while(System.nanoTime()<until){int remaining=(int)((until-System.nanoTime())/1000000L);socket.setSoTimeout(Math.max(1,remaining));byte[] b=new byte[2048];DatagramPacket reply=new DatagramPacket(b,b.length);
-   try{socket.receive(reply);try{Device d=parse(b,reply.getLength(),reply.getAddress());if(d!=null)devices.put(d.ip,d);}catch(IOException|RuntimeException ignored){}}catch(SocketTimeoutException e){break;}
-  }return new ArrayList<>(devices.values());
+   try{socket.receive(reply);try{Device d=parse(b,reply.getLength(),reply.getAddress());if(d!=null){devices.put(d.ip,d);Diagnostics.event("UDP_RX","valid ECN response modelMatch="+d.model.equalsIgnoreCase("TX-NR656")+" port="+d.port);}else Diagnostics.event("UDP_RX","ignored response");}catch(IOException|RuntimeException e){Diagnostics.error("UDP_PARSE_ERROR",e);}}catch(SocketTimeoutException e){break;}
+  }Diagnostics.event("UDP","discovery end responses="+devices.size());return new ArrayList<>(devices.values());
  }
 }
