@@ -1,6 +1,9 @@
 # Onkyo dahoam
 Unofficial local Android controller for TX-NR656.
 
+## v0.7.2
+Compact, top-aligned scrollable zone cards, full-width sliders with numeric readout, consistent source and playback control spacing. No per-zone +/- buttons in dashboard or widget slider dialogs. The shared relative +/- controls remain in a separate fixed bottom row only when Esstisch follows SOURCE, enabled only when both zones support volume. No change to connection or playback protocol.
+
 ## v0.7.1
 Two independent 1×1 volume widgets (Wohnzimmer and Esstisch). Tap opens a small real SeekBar dialog without launching the full dashboard. Android RemoteViews do not support draggable SeekBar; the tile itself is a shortcut and does not claim a live volume. The dialog checks connectivity and device profile before enabling controls, uses the existing coalesced volume commands, and never powers a zone on automatically. Widget and popup tests cover both zones.
 

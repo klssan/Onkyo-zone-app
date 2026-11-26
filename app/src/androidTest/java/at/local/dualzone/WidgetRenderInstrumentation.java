@@ -53,6 +53,12 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
     final MainActivity a=activity;
     runOnMainSync(()->{try{
      a.startDemo();
+     for(MainActivity.Zone z:a.zones){
+      LinearLayout volumeRow=(LinearLayout)z.slider.getParent();
+      require(volumeRow.getChildCount()==2&&volumeRow.getChildAt(0)==z.slider&&volumeRow.getChildAt(1)==z.value,"one slider and value per zone");
+     }
+     require(a.linked.getParent()==a.dashboard,"separate bottom group");
+     require(a.dashboard.getChildAt(a.dashboard.getChildCount()-1)==a.linked,"group at bottom");
      a.receive("MVL037");a.receive("ZVL32");a.render();
      require(a.zones[0].slider.isEnabled(),"volume above 50 enabled");
      require(a.zones[0].slider.getMax()==82,"profile maximum");
@@ -63,6 +69,7 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
      a.receive("ZVLN/A");a.render();require(!a.zones[1].slider.isEnabled(),"unavailable volume");
      a.receive("ZVL37");a.render();require(a.zones[1].slider.isEnabled(),"volume recovered");
      require(a.groupPlus.isEnabled(),"linked SOURCE available");int before=a.zones[0].vol,second=a.zones[1].vol;a.groupPlus.performClick();require(a.zones[0].vol==before+1&&a.zones[1].vol==second+1,"relative group step");
+     a.groupMinus.performClick();require(a.zones[0].vol==before&&a.zones[1].vol==second,"relative group minus");
      a.receive("SLZ24");a.render();require(a.linked.getVisibility()==View.GONE,"linked only SOURCE");require(a.zones[1].mediaRow.getVisibility()==View.VISIBLE&&a.zones[1].mediaPrev.getVisibility()==View.VISIBLE,"FM controls");a.receive("PRZ04");a.render();require(a.zones[1].mediaChoice.getText().toString().contains("Demo FM 4"),"preset label");
      a.receive("SLZ12");a.render();require(a.zones[1].mediaChoice.getText().toString().equals("Google TV öffnen"),"TV shortcut");
      a.receive("SLZ03");a.render();require(a.zones[1].mediaRow.getVisibility()==View.GONE,"AUX hides media controls");
@@ -84,6 +91,7 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
     final VolumeActivity a=popup;
     runOnMainSync(()->{try{
      require(a.popupZone==selected,"popup zone");
+     require(((LinearLayout)a.zones[selected].slider.getParent()).getChildCount()==2,"popup slider only");
      a.disconnect();a.render();require(!a.zones[selected].slider.isEnabled(),"offline popup disabled");
      a.startDemo();require(a.zones[selected].slider.isEnabled(),"popup slider enabled");
      int other=a.zones[1-selected].vol;

@@ -36,7 +36,7 @@ public final class VolumeActivity extends MainActivity {
   Zone z=zones[popupZone];
   boolean verified=demo||capabilities!=null;
   boolean usable=verified&&canVolume(z);
-  z.slider.setEnabled(usable);z.minus.setEnabled(usable&&shownVolume(z)>0);z.plus.setEnabled(usable&&shownVolume(z)<maxVolume(popupZone));
+  z.slider.setEnabled(usable);
   String hint=!connected?"Keine bestätigte Verbindung":Boolean.FALSE.equals(z.power)?"Zone ausgeschaltet":!verified?"Geräteprofil wird geprüft":z.unavailable?"Lautstärke nicht regelbar":z.pending>=0?"Warte auf Bestätigung …":usable?"Maximum "+Protocol.volumeLabel(maxVolume(popupZone),scale(popupZone)):"Lautstärke wird abgefragt";
   volumeHint.setText(hint);
   closeButton.setEnabled(z.pending<0);

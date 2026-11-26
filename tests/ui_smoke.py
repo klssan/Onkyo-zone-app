@@ -52,6 +52,10 @@ if "package:" not in subprocess.run(["adb","shell","pm","path","com.google.andro
 tap("Verbindung")
 tap("Demo")
 wait_for("DEMO · kein Receiver verbunden")
+wait_for("Beide leiser")
+wait_for("Beide lauter")
+assert len([n for n in nodes() if n.get("class")=="android.widget.SeekBar"])==2
+assert not any(n.get("content-desc") in ("Leiser Wohnzimmer","Lauter Wohnzimmer","Leiser Esstisch","Lauter Esstisch") for n in nodes())
 tap("Details Esstisch")
 wait_for("Ton stummschalten")
 wait_for("Spotify · Dienst wechseln")
