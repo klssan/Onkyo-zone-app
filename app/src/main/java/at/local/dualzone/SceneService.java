@@ -17,8 +17,8 @@ public final class SceneService extends Service {
   int id=i==null?-1:i.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,-1);
   String action=i==null?"":i.getAction();boolean checkOnly=SceneWidget.CHECK.equals(action);
   if(!running){
-   NotificationManager nm=getSystemService(NotificationManager.class);nm.createNotificationChannel(new NotificationChannel(CHANNEL,"DualZone Szenen",NotificationManager.IMPORTANCE_LOW));
-   Notification n=new Notification.Builder(this,CHANNEL).setSmallIcon(R.drawable.dz_notification).setContentTitle(checkOnly?"DualZone Verbindung prüfen":"DualZone Szene").setContentText(checkOnly?"Status wird abgefragt":"Receiver wird gesteuert").setOngoing(true).build();
+   NotificationManager nm=getSystemService(NotificationManager.class);nm.createNotificationChannel(new NotificationChannel(CHANNEL,"Onkyo dahoam Szenen",NotificationManager.IMPORTANCE_LOW));
+   Notification n=new Notification.Builder(this,CHANNEL).setSmallIcon(R.drawable.dz_notification).setContentTitle(checkOnly?"Onkyo dahoam Verbindung prüfen":"Onkyo dahoam Szene").setContentText(checkOnly?"Status wird abgefragt":"Receiver wird gesteuert").setOngoing(true).build();
    if(Build.VERSION.SDK_INT>=34)startForeground(520,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE);else startForeground(520,n);
   }
   if(!SceneWidget.owns(this,id)||!checkOnly&&!SceneWidget.RUN.equals(action)){if(!running)stopSelf();return START_NOT_STICKY;}
@@ -51,7 +51,7 @@ public final class SceneService extends Service {
  static String safeSceneError(String message){
   if(message==null)return "Receiver antwortet nicht";
   if(message.matches("(Status fehlt|Nicht bestätigt|Nicht verfügbar): [A-Z0-9]{3}"))return message;
-  if(Arrays.asList("Zonenstatus unbekannt","Zone ausgeschaltet","Quelle unbekannt","SOURCE folgt Hauptzone","Gemeinsame Medienquelle","Gemeinsamer FM/AM-Tuner","Lautstärke über Geräte-Maximum","Radiospeicherplatz unbekannt").contains(message))return message;
+  if(Arrays.asList("Zonenstatus unbekannt","Zone ausgeschaltet","Quelle unbekannt","SOURCE folgt Wohnzimmer","Gemeinsame Medienquelle","Gemeinsamer FM/AM-Tuner","Lautstärke über Geräte-Maximum","Radiospeicherplatz unbekannt").contains(message))return message;
   return "Receiver antwortet nicht";
  }
  void phase(int job,int id,String value){main.post(()->{if(running&&token==job&&activeId==id)SceneWidget.phase(this,id,value);});}

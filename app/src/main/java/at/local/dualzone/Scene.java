@@ -34,7 +34,7 @@ final class Scene {
  String compactSummary(){
   ArrayList<String> parts=new ArrayList<>();
   for(int i=0;i<2;i++){Zone z=zones[i];if(!z.changes())continue;
-   String s=(i==0?"H":"Z2");if(z.power==OFF)s+=" AUS";else if(!z.source.isEmpty()){String n=SOURCE_NAMES[Arrays.asList(SOURCE_CODES).indexOf(z.source)];if(z.source.equals("2B")&&!z.service.isEmpty())n=NET_NAMES[Arrays.asList(NET_CODES).indexOf(z.service)];s+=" "+n+(z.preset>0?z.preset:"");}else if(z.power==ON)s+=" AN";if(z.volume>=0)s+=" · "+z.volume;parts.add(s);}
+   String s=(i==0?"WZ":"ET");if(z.power==OFF)s+=" AUS";else if(!z.source.isEmpty()){String n=SOURCE_NAMES[Arrays.asList(SOURCE_CODES).indexOf(z.source)];if(z.source.equals("2B")&&!z.service.isEmpty())n=NET_NAMES[Arrays.asList(NET_CODES).indexOf(z.service)];s+=" "+n+(z.preset>0?z.preset:"");}else if(z.power==ON)s+=" AN";if(z.volume>=0)s+=" · "+z.volume;parts.add(s);}
   return String.join("\n",parts);
  }
  String zoneSummary(int i){
@@ -45,5 +45,5 @@ final class Scene {
   if(z.volume>=0)parts.add("Vol. "+z.volume);
   return String.join(" · ",parts);
  }
- String summary(){return "Haupt: "+zoneSummary(0)+" / Zone 2: "+zoneSummary(1);}
+ String summary(){return "Wohnzimmer: "+zoneSummary(0)+" / Esstisch: "+zoneSummary(1);}
 }

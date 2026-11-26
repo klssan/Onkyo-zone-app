@@ -15,11 +15,11 @@ public class MainActivity extends Activity {
  final String[] netNames={"NET allgemein","Spotify","TuneIn Radio","Musikserver","Favoriten","Deezer"};
  final String[] netCodes={"","0A","0E","00","01","12"};
  final Zone[] zones={new Zone(),new Zone()};
- TextView status,groupText;SeekBar group;Receiver receiver;SharedPreferences prefs;
+ TextView status,groupText;LinearLayout linked;Button groupMinus,groupPlus;Receiver receiver;SharedPreferences prefs;
  LinearLayout dashboard,detailPage; int detailIndex=-1; TextView detailStatus,detailVolume; Button detailPower,detailSource,detailMute,modeButton; SeekBar detailSlider; boolean detailDragging,manual,choosing; String deviceId=""; Network activeNetwork; final Map<String,String> audio=new HashMap<>(); final ArrayList<Button> detailCommands=new ArrayList<>(); final ArrayList<TextView> audioLabels=new ArrayList<>();
- boolean connected,demo,connecting,foreground,dragGroup;int generation,groupA,groupB,groupScaleA,groupScaleB,groupMaxA,groupMaxB;String ip="",service=""; Capabilities capabilities; String serviceCode=""; long nextProfileQuery; final Map<String,View> audioRows=new HashMap<>(); TextView profileNote; LinearLayout radioPanel,netPanel; Button radioChoice,netChoice; final int[] currentPreset={-1,-1};
+ boolean connected,demo,connecting,foreground;int generation;String ip="",service=""; Capabilities capabilities; String serviceCode=""; long nextProfileQuery; final Map<String,View> audioRows=new HashMap<>(); TextView profileNote; LinearLayout radioPanel,netPanel; Button radioChoice,netChoice; final int[] currentPreset={-1,-1};
  final Handler handler=new Handler(Looper.getMainLooper());
- static class Zone{Boolean power,mute;int vol=-1,pending=-1;long pendingUntil;boolean unavailable;String source="";TextView value;Button powerBtn,src;SeekBar slider;boolean dragging;}
+ static class Zone{Boolean power,mute;int vol=-1,pending=-1;long pendingUntil;boolean unavailable;String source="";TextView value;Button powerBtn,src,minus,plus,mediaPrev,mediaChoice,mediaPlay,mediaNext;LinearLayout mediaRow;SeekBar slider;boolean dragging;long lastDrag;}
  int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
  TextView label(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setGravity(Gravity.CENTER_VERTICAL);return t;}
  LinearLayout row(){LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);return r;}
@@ -30,30 +30,29 @@ public class MainActivity extends Activity {
  void weighted(LinearLayout r,View v,int h){r.addView(v,new LinearLayout.LayoutParams(0,h<0?h:dp(h),1));}
  void gap(LinearLayout r,int h){add(r,new View(this),1,h);}
  void hgap(LinearLayout r,int w){add(r,new View(this),w,1);}
- @Override public void onCreate(Bundle b){super.onCreate(b);Diagnostics.open(getFilesDir());Diagnostics.event("APP","v0.6.1 Android API="+Build.VERSION.SDK_INT+" screenDp="+getResources().getConfiguration().screenWidthDp+"x"+getResources().getConfiguration().screenHeightDp);prefs=getSharedPreferences("config",MODE_PRIVATE);
+ @Override public void onCreate(Bundle b){super.onCreate(b);Diagnostics.open(getFilesDir());Diagnostics.event("APP","v0.7.0 Android API="+Build.VERSION.SDK_INT+" screenDp="+getResources().getConfiguration().screenWidthDp+"x"+getResources().getConfiguration().screenHeightDp);prefs=getSharedPreferences("config",MODE_PRIVATE);
   getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
   LinearLayout root=col();root.setBackgroundColor(BG);root.setPadding(dp(12),dp(6),dp(12),dp(6));dashboard=root;setContentView(root);
-  LinearLayout head=row();ImageView brand=new ImageView(this);brand.setImageResource(R.drawable.dz_logo);brand.setContentDescription("DualZone Remote");add(head,brand,30,30);hgap(head,5);TextView title=label("DualZone",17,FG);title.setContentDescription("DualZone Remote – TX-NR656");title.setTypeface(null,Typeface.BOLD);weighted(head,title,44);
+  LinearLayout head=row();ImageView brand=new ImageView(this);brand.setImageResource(R.drawable.dz_logo);brand.setContentDescription("Onkyo dahoam");add(head,brand,30,30);hgap(head,5);TextView title=label("Onkyo dahoam",17,FG);title.setContentDescription("Onkyo dahoam – TX-NR656");title.setTypeface(null,Typeface.BOLD);weighted(head,title,44);
   Button tv=btn("TV");tv.setContentDescription("Google TV öffnen");add(head,tv,48,44);hgap(head,6);tv.setOnClickListener(v->openGoogleTv());
   Button config=btn("Verbindung");add(head,config,112,44);config.setOnClickListener(v->connectionMenu());add(root,head,-1,44);
   status=label("",13,MUTED);status.setMaxLines(2);status.setOnClickListener(v->diagnosticsDialog());add(root,status,-1,34);gap(root,4);
   root.addView(zoneCard(0),new LinearLayout.LayoutParams(-1,0,1));gap(root,6);
   root.addView(zoneCard(1),new LinearLayout.LayoutParams(-1,0,1));gap(root,6);
-  LinearLayout linked=col();linked.setPadding(dp(12),dp(4),dp(12),dp(4));linked.setBackground(shape(PANEL,14));
-  groupText=label("Beide Zonen",16,FG);add(linked,groupText,-1,28);group=new SeekBar(this);group.setMax(4*CAP);add(linked,group,-1,44);add(root,linked,-1,80);
-  group.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
-   public void onStartTrackingTouch(SeekBar s){dragGroup=true;groupA=shownVolume(zones[0]);groupB=shownVolume(zones[1]);groupScaleA=scale(0);groupScaleB=scale(1);groupMaxA=maxVolume(0);groupMaxB=maxVolume(1);}
-   public void onProgressChanged(SeekBar s,int n,boolean user){if(user&&dragGroup){try{int[] a=linkedTarget(n);groupText.setText("Beide Zonen   "+Protocol.volumeLabel(a[0],groupScaleA)+" / "+Protocol.volumeLabel(a[1],groupScaleB));}catch(Exception ignored){}}}
-   public void onStopTrackingTouch(SeekBar s){dragGroup=false;if(canLink()&&groupA==shownVolume(zones[0])&&groupB==shownVolume(zones[1])&&groupScaleA==scale(0)&&groupScaleB==scale(1)&&groupMaxA==maxVolume(0)&&groupMaxB==maxVolume(1)){int[] a=linkedTarget(s.getProgress());setVolumes(a[0],a[1]);}render();}
-  });
+  linked=row();linked.setPadding(dp(12),dp(4),dp(12),dp(4));linked.setBackground(shape(PANEL,14));
+  groupMinus=btn("−");groupMinus.setContentDescription("Beide leiser");add(linked,groupMinus,48,44);hgap(linked,8);groupText=label("Beide Zonen",16,FG);groupText.setGravity(Gravity.CENTER);weighted(linked,groupText,44);hgap(linked,8);groupPlus=btn("+");groupPlus.setContentDescription("Beide lauter");add(linked,groupPlus,48,44);add(root,linked,-1,56);
+  groupMinus.setOnClickListener(v->stepGroup(-1));groupPlus.setOnClickListener(v->stepGroup(1));
   ip=prefs.getString("ip","");manual=prefs.getBoolean("manual",false);deviceId=prefs.getString("deviceId","");demo=false;status.setText("Receiver wird gesucht …");render();
  }
  LinearLayout zoneCard(int idx){Zone z=zones[idx];LinearLayout c=col();c.setPadding(dp(12),dp(5),dp(12),dp(5));c.setBackground(shape(PANEL,14));c.setGravity(Gravity.CENTER_VERTICAL);
-  LinearLayout top=row();TextView title=label(idx==0?"Hauptzone":"Nebenzone",20,FG);title.setTypeface(null,Typeface.BOLD);weighted(top,title,44);z.powerBtn=btn("--");add(top,z.powerBtn,74,44);hgap(top,5);Button details=btn("›");details.setContentDescription(idx==0?"Details Hauptzone":"Details Nebenzone");add(top,details,44,44);add(c,top,-1,44);gap(c,4);
+  LinearLayout top=row();TextView title=label(idx==0?"Wohnzimmer":"Esstisch",20,FG);title.setTypeface(null,Typeface.BOLD);weighted(top,title,44);z.powerBtn=btn("--");add(top,z.powerBtn,74,44);hgap(top,5);Button details=btn("›");details.setContentDescription(idx==0?"Details Wohnzimmer":"Details Esstisch");add(top,details,44,44);add(c,top,-1,44);gap(c,4);
   z.src=btn("Quelle");add(c,z.src,-1,44);gap(c,2);
-  LinearLayout vol=row();z.slider=new SeekBar(this);z.slider.setMax(CAP);weighted(vol,z.slider,44);z.value=label("--",23,FG);z.value.setGravity(Gravity.CENTER);add(vol,z.value,48,44);add(c,vol,-1,44);
+  LinearLayout vol=row();z.minus=btn("−");z.plus=btn("+");z.minus.setContentDescription("Leiser "+(idx==0?"Wohnzimmer":"Esstisch"));z.plus.setContentDescription("Lauter "+(idx==0?"Wohnzimmer":"Esstisch"));add(vol,z.minus,40,44);z.slider=new SeekBar(this);z.slider.setMax(CAP);weighted(vol,z.slider,44);add(vol,z.plus,40,44);z.value=label("--",21,FG);z.value.setGravity(Gravity.CENTER);add(vol,z.value,52,44);add(c,vol,-1,44);
+  z.minus.setOnClickListener(v->stepZone(idx,-1));z.plus.setOnClickListener(v->stepZone(idx,1));
+  z.mediaRow=row();z.mediaPrev=btn("⏮");z.mediaChoice=btn("Quelle");z.mediaPlay=btn("⏯");z.mediaNext=btn("⏭");add(z.mediaRow,z.mediaPrev,44,44);weighted(z.mediaRow,z.mediaChoice,44);add(z.mediaRow,z.mediaPlay,44,44);add(z.mediaRow,z.mediaNext,44,44);add(c,z.mediaRow,-1,44);
+  z.mediaPrev.setOnClickListener(v->mediaStep(idx,-1));z.mediaNext.setOnClickListener(v->mediaStep(idx,1));z.mediaPlay.setOnClickListener(v->transport(idx,"P/P"));z.mediaChoice.setOnClickListener(v->{String media=effectiveSource(idx);if(isRadio(media))radioDialog(idx);else if(media.equals("2B"))netDialog(idx);else if(media.equals("12"))openGoogleTv();});
   z.powerBtn.setOnClickListener(v->{if(z.power!=null)send((idx==0?"PWR":"ZPW")+(z.power?"00":"01"));});z.src.setOnClickListener(v->sourceDialog(idx));details.setOnClickListener(v->details(idx));
-  z.slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar s){z.dragging=true;}public void onProgressChanged(SeekBar s,int n,boolean user){if(user)z.value.setText(Protocol.volumeLabel(n,scale(idx)));}public void onStopTrackingTouch(SeekBar s){z.dragging=false;setVolume(idx,s.getProgress());render();}});
+  z.slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar s){z.dragging=true;z.lastDrag=0;}public void onProgressChanged(SeekBar s,int n,boolean user){if(user){z.value.setText(Protocol.volumeLabel(n,scale(idx)));dragVolume(idx,n,z.dragging);}}public void onStopTrackingTouch(SeekBar s){z.dragging=false;setVolume(idx,s.getProgress());render();}});
   return c;
  }
  int zoneIndex(Zone z){return z==zones[0]?0:1;}
@@ -61,20 +60,22 @@ public class MainActivity extends Activity {
  int maxVolume(int idx){return Protocol.maxVolume(capabilities==null?0:capabilities.volumeMax[idx],scale(idx),zones[idx].vol);}
  int shownVolume(Zone z){return z.pending>=0?z.pending:z.vol;}
  boolean canVolume(Zone z){return connected&&Boolean.TRUE.equals(z.power)&&!z.unavailable&&z.vol>=0&&z.vol<=100*scale(zoneIndex(z));}
- int[] linkedTarget(int progress){int sum=groupA*(2/groupScaleA)+groupB*(2/groupScaleB);return Protocol.linkedScaled(groupA,groupB,groupScaleA,groupScaleB,groupMaxA,groupMaxB,(int)Math.round((progress-sum)/2.0));}
+ void dragVolume(int idx,int target,boolean dragging){Zone z=zones[idx];long now=SystemClock.elapsedRealtime();if(!dragging||now-z.lastDrag>=10){z.lastDrag=now;setVolume(idx,target);}}
+ void stepZone(int idx,int direction){Zone z=zones[idx];if(canVolume(z)){setVolume(idx,Math.max(0,Math.min(maxVolume(idx),shownVolume(z)+direction*scale(idx))));render();}}
+ void stepGroup(int direction){if(!canLink())return;int[] t=Protocol.linkedScaled(shownVolume(zones[0]),shownVolume(zones[1]),scale(0),scale(1),maxVolume(0),maxVolume(1),direction*2);setVolumes(t[0],t[1]);render();}
  boolean markVolume(int idx,int target){
   Zone z=zones[idx];if(!canVolume(z)||target<0||target>maxVolume(idx)){Diagnostics.event("VOLUME","blocked zone="+(idx+1)+" target="+target+" power="+z.power+" raw="+z.vol+" unavailable="+z.unavailable);return false;}
   if(target==shownVolume(z))return false;z.pending=target;z.pendingUntil=SystemClock.elapsedRealtime()+6000;
   Diagnostics.event("VOLUME","requested zone="+(idx+1)+" raw="+target+" scale="+scale(idx)+" max="+maxVolume(idx));return true;
  }
- void setVolume(int idx,int target){if(markVolume(idx,target)){String prefix=idx==0?"MVL":"ZVL";send(prefix+Protocol.hex(target));if(!demo&&receiver!=null)receiver.send(prefix+"QSTN");}}
- void setVolumes(int a,int b){if(!canLink()||a<0||b<0||a>maxVolume(0)||b>maxVolume(1))return;ArrayList<String> commands=new ArrayList<>();if(markVolume(0,a))commands.add("MVL"+Protocol.hex(a));if(markVolume(1,b))commands.add("ZVL"+Protocol.hex(b));if(!commands.isEmpty())send(commands.toArray(new String[0]));}
+ void setVolume(int idx,int target){if(markVolume(idx,target)){String command=(idx==0?"MVL":"ZVL")+Protocol.hex(target);if(demo)send(command);else if(receiver!=null)receiver.sendVolume(command);}}
+ void setVolumes(int a,int b){if(!canLink()||a<0||b<0||a>maxVolume(0)||b>maxVolume(1))return;ArrayList<String> commands=new ArrayList<>();if(markVolume(0,a))commands.add("MVL"+Protocol.hex(a));if(markVolume(1,b))commands.add("ZVL"+Protocol.hex(b));if(!commands.isEmpty()){if(demo)send(commands.toArray(new String[0]));else if(receiver!=null)for(String command:commands)receiver.sendVolume(command);}}
  void expireVolumes(){long now=SystemClock.elapsedRealtime();for(int i=0;i<2;i++){Zone z=zones[i];if(z.pending>=0&&now>=z.pendingUntil){Diagnostics.event("VOLUME","unconfirmed zone="+(i+1)+" requested="+z.pending+" observed="+z.vol);z.pending=-1;Toast.makeText(this,"Lautstärke nicht bestätigt · Zone "+(i+1),Toast.LENGTH_SHORT).show();}}}
  String volumeText(Zone z){return z.unavailable?"–":Protocol.volumeLabel(shownVolume(z),scale(zoneIndex(z)))+(z.pending>=0?"…":"");}
  void receiveVolume(Zone z,String v){int raw=Protocol.volume(v);if(raw<0){Diagnostics.event("VOLUME","invalid reply zone="+(zoneIndex(z)+1));return;}z.unavailable=false;z.vol=raw;if(z.pending==raw)z.pending=-1;}
  boolean canLink(){return canVolume(zones[0])&&canVolume(zones[1])&&zones[1].source.equals("80");}
- void render(){expireVolumes();for(Zone z:zones){boolean on=Boolean.TRUE.equals(z.power);z.powerBtn.setEnabled(connected&&z.power!=null);z.powerBtn.setText(z.power==null?"--":on?"An":"Aus");z.powerBtn.setTextColor(on?ACCENT:FG);z.src.setEnabled(connected&&on);z.src.setText(sourceName(z.source)+(z.source.equals("2B")&&!service.isEmpty()?" / "+service:"")+(z.source.equals("80")?" · "+sourceName(zones[0].source):""));z.slider.setEnabled(canVolume(z));if(!z.dragging){z.slider.setMax(maxVolume(zoneIndex(z)));z.slider.setProgress(Math.max(0,shownVolume(z)));z.value.setText(volumeText(z));z.slider.setContentDescription(z.unavailable?"Lautstärke nicht verfügbar":"Lautstärke, Maximum "+Protocol.volumeLabel(maxVolume(zoneIndex(z)),scale(zoneIndex(z))));}}
-  group.setEnabled(canLink());if(!dragGroup){group.setMax(maxVolume(0)*(2/scale(0))+maxVolume(1)*(2/scale(1)));group.setProgress(Math.max(0,shownVolume(zones[0]))*(2/scale(0))+Math.max(0,shownVolume(zones[1]))*(2/scale(1)));groupText.setText(canLink()?"Beide Zonen   "+volumeText(zones[0])+" / "+volumeText(zones[1]):"Beide Zonen · nur SOURCE");} renderDetails();
+ void render(){expireVolumes();for(Zone z:zones){boolean on=Boolean.TRUE.equals(z.power);z.powerBtn.setEnabled(connected&&z.power!=null);z.powerBtn.setText(z.power==null?"--":on?"An":"Aus");z.powerBtn.setTextColor(on?ACCENT:FG);z.src.setEnabled(connected&&on);z.src.setText(sourceName(z.source)+(z.source.equals("2B")&&!service.isEmpty()?" / "+service:"")+(z.source.equals("80")?" · "+sourceName(zones[0].source):""));z.slider.setEnabled(canVolume(z));z.minus.setEnabled(canVolume(z)&&shownVolume(z)>0);z.plus.setEnabled(canVolume(z)&&shownVolume(z)<maxVolume(zoneIndex(z)));renderMedia(zoneIndex(z));if(!z.dragging){z.slider.setMax(maxVolume(zoneIndex(z)));z.slider.setProgress(Math.max(0,shownVolume(z)));z.value.setText(volumeText(z));z.slider.setContentDescription(z.unavailable?"Lautstärke nicht verfügbar":"Lautstärke, Maximum "+Protocol.volumeLabel(maxVolume(zoneIndex(z)),scale(zoneIndex(z))));}}
+  linked.setVisibility(zones[1].source.equals("80")?View.VISIBLE:View.GONE);groupMinus.setEnabled(canLink()&&shownVolume(zones[0])>=scale(0)&&shownVolume(zones[1])>=scale(1));groupPlus.setEnabled(canLink()&&shownVolume(zones[0])+scale(0)<=maxVolume(0)&&shownVolume(zones[1])+scale(1)<=maxVolume(1));groupText.setText("Beide Zonen"); renderDetails();
  }
  String sourceName(String c){if(c.equals("80"))return "SOURCE";if(capabilities!=null){String name=capabilities.sourceName(c);if(name!=null)return name;}for(int i=0;i<codes.length;i++)if(codes[i].equals(c))return names[i];return c.isEmpty()?"Quelle unbekannt":"Quelle "+c;}
  LinkedHashMap<String,String> sources(int idx){if(capabilities!=null&&capabilities.hasSelectors)return capabilities.sources(idx);LinkedHashMap<String,String> out=new LinkedHashMap<>();if(idx==1)out.put("80","SOURCE");for(int j=0;j<codes.length;j++)if(idx==0||!codes[j].equals("05"))out.put(codes[j],names[j]);return out;}
@@ -83,6 +84,25 @@ public class MainActivity extends Activity {
  int effectiveZone(int idx){return idx==1&&zones[1].source.equals("80")?0:idx;}
  boolean isRadio(String code){return code.equals("24")||code.equals("25");}
  boolean zoneOn(int idx){return connected&&Boolean.TRUE.equals(zones[idx].power);}
+ boolean usb(String source){return source.equals("29")||source.equals("2A")||source.equals("2C");}
+ boolean playback(String source){return source.equals("2B")||source.equals("2E")||usb(source);}
+ String radioCaption(int idx){int n=currentPreset[effectiveZone(idx)];String caption=radioEntries(idx).get(n);return n<1?"Sender wählen":caption==null?String.format(Locale.ROOT,"P%02d",n):caption;}
+ void renderMedia(int idx){Zone z=zones[idx];String media=effectiveSource(idx);boolean follows=idx==1&&z.source.equals("80"),radio=isRadio(media),net=media.equals("2B"),play=playback(media),tv=media.equals("12");
+  z.mediaRow.setVisibility(zoneOn(idx)&&(follows||radio||play||tv)?View.VISIBLE:View.GONE);
+  boolean control=zoneOn(idx)&&!follows;
+  z.mediaPrev.setVisibility(control&&(radio||play&&!net)?View.VISIBLE:View.GONE);
+  z.mediaNext.setVisibility(control&&(radio||play)?View.VISIBLE:View.GONE);
+  z.mediaPlay.setVisibility(control&&play?View.VISIBLE:View.GONE);
+  z.mediaChoice.setVisibility(follows||radio||net||tv?View.VISIBLE:View.GONE);
+  z.mediaChoice.setEnabled(control&&(radio&&!radioEntries(idx).isEmpty()||net||tv));
+  z.mediaChoice.setText(follows?(radio?radioCaption(idx):net&&!service.isEmpty()?service:sourceName(media))+" · folgt Wohnzimmer":radio?radioCaption(idx):net?(service.isEmpty()?"NET-Dienst":service):"Google TV öffnen");
+  z.mediaPrev.setContentDescription((radio?"Vorheriger Sender":"Vorheriger Titel")+" "+(idx==0?"Wohnzimmer":"Esstisch"));z.mediaNext.setContentDescription((radio?"Nächster Sender":"Nächster Titel")+" "+(idx==0?"Wohnzimmer":"Esstisch"));z.mediaPlay.setContentDescription("Play/Pause "+(idx==0?"Wohnzimmer":"Esstisch"));
+  boolean tuner=capabilities==null||!capabilities.hasControls||capabilities.control("TUNER Control",effectiveZone(idx));
+  z.mediaPrev.setEnabled(control&&(!radio||tuner));z.mediaNext.setEnabled(control&&(!radio||tuner));z.mediaPlay.setEnabled(control&&play);
+ }
+ void mediaStep(int idx,int direction){if(isRadio(effectiveSource(idx)))radioPreset(idx,direction<0?"DOWN":"UP");else transport(idx,direction<0?"TRDN":"TRUP");}
+ void transport(int idx,String action){String media=effectiveSource(idx);if(!zoneOn(idx)||!playback(media)||idx==1&&zones[1].source.equals("80"))return;if(!Arrays.asList("P/P","TRUP","TRDN").contains(action))return;mediaAction(idx,media,(effectiveZone(idx)==0?"NTC":"NTZ")+action);}
+ void queryDashboardMedia(){if(!connected||receiver==null)return;ArrayList<String> q=new ArrayList<>();for(int i=0;i<2;i++)if(zoneOn(i)&&isRadio(effectiveSource(i))){String cmd=effectiveZone(i)==0?"PRSQSTN":"PRZQSTN";if(!q.contains(cmd))q.add(cmd);}if(!q.isEmpty())receiver.send(q.toArray(new String[0]));}
  void sourceDialog(int idx){
   LinkedHashMap<String,String> entries=sources(idx);if(entries.isEmpty()){Toast.makeText(this,"Keine Quellen gemeldet",Toast.LENGTH_SHORT).show();return;}
   String[] keys=entries.keySet().toArray(new String[0]),labels=entries.values().toArray(new String[0]);
@@ -120,7 +140,7 @@ public class MainActivity extends Activity {
  void details(int idx){Diagnostics.event("UI","details zone="+(idx+1));
   detailIndex=idx; detailDragging=false; detailCommands.clear();audioLabels.clear();audioRows.clear();modeButton=null;profileNote=null;
   detailPage=col();detailPage.setBackgroundColor(BG);detailPage.setPadding(dp(12),dp(6),dp(12),dp(6));
-  LinearLayout top=row();Button back=btn("‹");add(top,back,48,48);hgap(top,6);ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.dz_logo);logo.setContentDescription("DualZone Remote");add(top,logo,28,28);hgap(top,6);weighted(top,label(idx==0?"Hauptzone":"Nebenzone",21,FG),48);back.setOnClickListener(v->closeDetails());add(detailPage,top,-1,48);
+  LinearLayout top=row();Button back=btn("‹");add(top,back,48,48);hgap(top,6);ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.dz_logo);logo.setContentDescription("Onkyo dahoam");add(top,logo,28,28);hgap(top,6);weighted(top,label(idx==0?"Wohnzimmer":"Esstisch",21,FG),48);back.setOnClickListener(v->closeDetails());add(detailPage,top,-1,48);
   detailStatus=label("",13,MUTED);add(detailPage,detailStatus,-1,32);
   ScrollView scroll=new ScrollView(this);LinearLayout content=col();scroll.addView(content);detailPage.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout controls=section(content,"Steuerung");
@@ -128,11 +148,11 @@ public class MainActivity extends Activity {
   detailPower.setOnClickListener(v->{Zone z=zones[idx];if(z.power!=null)send((idx==0?"PWR":"ZPW")+(z.power?"00":"01"));});
   detailSource.setOnClickListener(v->sourceDialog(idx));gap(controls,6);
   LinearLayout volumeRow=row();detailSlider=new SeekBar(this);detailSlider.setMax(CAP);weighted(volumeRow,detailSlider,48);detailVolume=label("--",22,FG);add(volumeRow,detailVolume,48,48);add(controls,volumeRow,-1,48);
-  detailSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar s){detailDragging=true;}public void onProgressChanged(SeekBar s,int n,boolean user){if(user)detailVolume.setText(Protocol.volumeLabel(n,scale(idx)));}public void onStopTrackingTouch(SeekBar s){detailDragging=false;setVolume(idx,s.getProgress());render();}});
+  detailSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar s){detailDragging=true;zones[idx].lastDrag=0;}public void onProgressChanged(SeekBar s,int n,boolean user){if(user){detailVolume.setText(Protocol.volumeLabel(n,scale(idx)));dragVolume(idx,n,detailDragging);}}public void onStopTrackingTouch(SeekBar s){detailDragging=false;setVolume(idx,s.getProgress());render();}});
   detailMute=btn("Stumm");add(controls,detailMute,-1,48);detailMute.setOnClickListener(v->{Zone z=zones[idx];if(z.mute!=null)send((idx==0?"AMT":"ZMT")+(z.mute?"00":"01"));});
   if(idx==0){
    LinearLayout sound=section(content,"Klang");
-   modeButton=btn("Listening Mode");add(sound,modeButton,-1,48);modeButton.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Listening Mode").setItems(new String[]{"Stereo","Direct","All Channel Stereo","Pure Audio"},(d,i)->send("LMD"+new String[]{"00","01","0C","11"}[i])).show());
+   modeButton=btn("Listening Mode");add(sound,modeButton,-1,48);modeButton.setOnClickListener(v->modeDialog());
    gap(sound,4);audioRow(sound,"Bass","TFRB","TFRBDOWN","TFRBUP");audioRow(sound,"Höhen","TFRT","TFRTDOWN","TFRTUP");audioRow(sound,"Center","CTL","CTLDOWN","CTLUP");audioRow(sound,"Subwoofer","SWL","SWLDOWN","SWLUP");
   }
   radioPanel=section(content,"Radio");LinearLayout play=radioPanel;
@@ -140,7 +160,7 @@ public class MainActivity extends Activity {
   LinearLayout presets=row();Button prev=btn("‹ Sender"),next=btn("Sender ›");prev.setTag("radio");next.setTag("radio");detailCommands.add(prev);detailCommands.add(next);weighted(presets,prev,48);hgap(presets,6);weighted(presets,next,48);add(play,presets,-1,48);
   prev.setOnClickListener(v->radioPreset(idx,"DOWN"));next.setOnClickListener(v->radioPreset(idx,"UP"));
   netPanel=section(content,"NET-Dienste");netChoice=btn("NET-Dienst auswählen");add(netPanel,netChoice,-1,48);netChoice.setOnClickListener(v->netDialog(idx));
-  profileNote=label("",12,MUTED);add(content,profileNote,-1,40);TextView limit=label("Maximalpegel gemäß Receiver-Profil; Zone 2 LINE OUT ggf. nicht regelbar.",12,MUTED);add(content,limit,-1,40);
+  profileNote=label("",12,MUTED);add(content,profileNote,-1,40);TextView limit=label("Maximalpegel gemäß Receiver-Profil; Esstisch LINE OUT ggf. nicht regelbar.",12,MUTED);add(content,limit,-1,40);
   setContentView(detailPage);queryDetails();renderDetails();
  }
  LinearLayout section(LinearLayout parent,String title){gap(parent,8);LinearLayout c=col();c.setBackground(shape(PANEL,14));c.setPadding(dp(12),dp(8),dp(12),dp(10));TextView t=label(title,17,FG);t.setTypeface(null,Typeface.BOLD);add(c,t,-1,30);add(parent,c,-1,-2);return c;}
@@ -154,7 +174,18 @@ public class MainActivity extends Activity {
   if(zoneOn(detailIndex)&&isRadio(effectiveSource(detailIndex)))q.add(effectiveZone(detailIndex)==0?"PRSQSTN":"PRZQSTN");
   if(!q.isEmpty())receiver.send(q.toArray(new String[0]));
  }}
- String modeName(String code){if(code==null)return "–";switch(code){case "00":return "Stereo";case "01":return "Direct";case "0C":return "All Channel Stereo";case "11":return "Pure Audio";default:return code==null?"–":code;}}
+ LinkedHashMap<String,String> listeningModes(){
+  LinkedHashMap<String,String> modes=new LinkedHashMap<>();
+  modes.put("00","Stereo");modes.put("01","Direct");modes.put("0C","All Channel Stereo");
+  if(Boolean.FALSE.equals(zones[1].power))modes.put("11","Pure Audio");
+  modes.put("80","Dolby Surround / Atmos");modes.put("82","DTS Neural:X / DTS:X");
+  return modes;
+ }
+ void modeDialog(){if(!zoneOn(0)||!audio.containsKey("LMD"))return;
+  LinkedHashMap<String,String> modes=listeningModes();String[] ids=modes.keySet().toArray(new String[0]),labels=modes.values().toArray(new String[0]);
+  new AlertDialog.Builder(this).setTitle("Listening Mode").setItems(labels,(d,i)->{if(zoneOn(0)&&listeningModes().containsKey(ids[i])){send("LMD"+ids[i]);if(!demo&&receiver!=null)receiver.send("LMDQSTN");}}).show();
+ }
+ String modeName(String code){if(code==null)return "–";switch(code){case "00":return "Stereo";case "01":return "Direct";case "0C":return "All Channel Stereo";case "11":return "Pure Audio";case "80":return "Dolby Surround / Atmos";case "82":return "DTS Neural:X / DTS:X";default:return code==null?"–":code;}}
  boolean allowedAudio(String key){if(capabilities==null||!capabilities.hasControls)return true;String id;switch(key){case "TFRB":id="Bass";break;case "TFRT":id="Treble";break;case "CTL":id="Center Level";break;case "SWL":id="Subwoofer Level";break;default:return false;}return capabilities.control(id,0);}
  void renderDetails(){if(detailIndex<0)return;Zone z=zones[detailIndex];boolean on=connected&&Boolean.TRUE.equals(z.power);
   detailStatus.setText(status.getText());detailPower.setText(z.power==null?"–":on?"An":"Aus");detailPower.setEnabled(connected&&z.power!=null);detailSource.setText(sourceName(z.source)+(z.source.equals("2B")&&!service.isEmpty()?" / "+service:""));detailSource.setEnabled(on);
@@ -187,8 +218,8 @@ public class MainActivity extends Activity {
  }
  void widgetMenu(){
   android.appwidget.AppWidgetManager m=android.appwidget.AppWidgetManager.getInstance(this);
-  new AlertDialog.Builder(this).setTitle("Homescreen-Widgets").setMessage("Erstelle beliebig viele DualZone-Szenen. Ein Tippen führt die gewählten Einstellungen aus, auch ohne geöffnete App. FM4 beispielsweise: Zone 2 einschalten, FM wählen, Speicherplatz einstellen, Lautstärke 40. Hauptzone unverändert. Nach dem Hinzufügen auf Einrichten oder das Zahnrad tippen. ↻ prüft nur die Verbindung; Titel und Aktionsbereich starten die Szene.")
-   .setNegativeButton("Schließen",null).setPositiveButton("Widget hinzufügen",(d,n)->{if(m.isRequestPinAppWidgetSupported()){if(!m.requestPinAppWidget(new ComponentName(this,SceneWidget.class),null,null))Toast.makeText(this,"Bitte über Homescreen-Widget-Auswahl hinzufügen",Toast.LENGTH_LONG).show();}else Toast.makeText(this,"Homescreen lange drücken → Widgets → DualZone Remote",Toast.LENGTH_LONG).show();}).show();
+  new AlertDialog.Builder(this).setTitle("Homescreen-Widgets").setMessage("Erstelle beliebig viele Onkyo dahoam-Szenen. Ein Tippen führt die gewählten Einstellungen aus, auch ohne geöffnete App. FM4 beispielsweise: Esstisch einschalten, FM wählen, Speicherplatz einstellen, Lautstärke 40. Wohnzimmer unverändert. Nach dem Hinzufügen auf Einrichten oder das Zahnrad tippen. ↻ prüft nur die Verbindung; Titel und Aktionsbereich starten die Szene.")
+   .setNegativeButton("Schließen",null).setPositiveButton("Widget hinzufügen",(d,n)->{if(m.isRequestPinAppWidgetSupported()){if(!m.requestPinAppWidget(new ComponentName(this,SceneWidget.class),null,null))Toast.makeText(this,"Bitte über Homescreen-Widget-Auswahl hinzufügen",Toast.LENGTH_LONG).show();}else Toast.makeText(this,"Homescreen lange drücken → Widgets → Onkyo dahoam",Toast.LENGTH_LONG).show();}).show();
  }
  void connectionMenu(){new AlertDialog.Builder(this).setTitle("Verbindung & Diagnose").setItems(new String[]{"Automatisch suchen","IP manuell eingeben","Demo","Diagnosebericht","Homescreen-Widgets"},(d,n)->{
   if(n==0){Diagnostics.event("UI","automatic discovery requested");demo=false;manual=false;deviceId="";prefs.edit().putBoolean("manual",false).remove("deviceId").apply();SceneWidget.refreshAll(this);disconnect();tick();}
@@ -200,7 +231,7 @@ public class MainActivity extends Activity {
   try{String s=Diagnostics.snapshot();info+="\n\nLetzte Einträge:\n"+s.substring(Math.max(0,s.length()-1300));}catch(java.io.IOException e){Diagnostics.error("LOG_READ_ERROR",e);}
   TextView t=label(info,13,FG);t.setPadding(dp(16),dp(8),dp(16),dp(8));t.setTextIsSelectable(true);ScrollView sc=new ScrollView(this);sc.addView(t);
   new AlertDialog.Builder(this).setTitle("Diagnosebericht").setView(sc)
-   .setPositiveButton("TXT exportieren",(d,n)->{Diagnostics.event("UI","export requested");Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("text/plain");i.addCategory(Intent.CATEGORY_OPENABLE);i.putExtra(Intent.EXTRA_TITLE,"DualZone-Diagnose-v0.6.1.txt");try{startActivityForResult(i,404);}catch(ActivityNotFoundException e){Diagnostics.error("EXPORT_ERROR",e);Toast.makeText(this,"Dateiauswahl nicht verfügbar",Toast.LENGTH_LONG).show();}})
+   .setPositiveButton("TXT exportieren",(d,n)->{Diagnostics.event("UI","export requested");Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("text/plain");i.addCategory(Intent.CATEGORY_OPENABLE);i.putExtra(Intent.EXTRA_TITLE,"Onkyo dahoam-Diagnose-v0.7.0.txt");try{startActivityForResult(i,404);}catch(ActivityNotFoundException e){Diagnostics.error("EXPORT_ERROR",e);Toast.makeText(this,"Dateiauswahl nicht verfügbar",Toast.LENGTH_LONG).show();}})
    .setNeutralButton("Log löschen",(d,n)->new AlertDialog.Builder(this).setMessage("Alle bisherigen Diagnoseeinträge löschen?").setNegativeButton("Abbrechen",null).setPositiveButton("Löschen",(x,y)->{try{Diagnostics.clear();}catch(java.io.IOException e){Diagnostics.error("LOG_CLEAR_ERROR",e);}}).show()).setNegativeButton("Schließen",null).show();
  }
  @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request!=404||result!=RESULT_OK||data==null||data.getData()==null)return;
@@ -211,7 +242,7 @@ public class MainActivity extends Activity {
  Network lan(){ConnectivityManager m=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);for(Network n:m.getAllNetworks()){NetworkCapabilities c=m.getNetworkCapabilities(n);if(c!=null&&(c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)||c.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)))return n;}return null;}
  void clear(){Arrays.fill(currentPreset,-1);for(Zone z:zones){z.power=null;z.mute=null;z.vol=-1;z.pending=-1;z.unavailable=false;z.source="";}service="";serviceCode="";audio.clear();capabilities=null;nextProfileQuery=0;}
  void disconnect(){if(connected||connecting||receiver!=null)Diagnostics.event("CONNECTION","disconnect generation="+generation);generation++;if(receiver!=null){receiver.close();receiver=null;}connected=false;connecting=false;choosing=false;activeNetwork=null;clear();}
- void tick(){if(!foreground||demo)return;Network n=lan();if(n==null){if(!status.getText().toString().startsWith("Kein WLAN"))Diagnostics.event("NETWORK","no WiFi/Ethernet");disconnect();status.setText("Kein WLAN/LAN – bitte Heimnetz verbinden");render();return;}if(activeNetwork!=null&&!activeNetwork.equals(n)){Diagnostics.event("NETWORK","network changed");disconnect();}if(choosing)return;if(!connected&&!connecting){if(manual&&!ip.isEmpty())connect(n);else discover(n);}else if(connected&&receiver!=null){receiver.query();queryProfile();queryDetails();}}
+ void tick(){if(!foreground||demo)return;Network n=lan();if(n==null){if(!status.getText().toString().startsWith("Kein WLAN"))Diagnostics.event("NETWORK","no WiFi/Ethernet");disconnect();status.setText("Kein WLAN/LAN – bitte Heimnetz verbinden");render();return;}if(activeNetwork!=null&&!activeNetwork.equals(n)){Diagnostics.event("NETWORK","network changed");disconnect();}if(choosing)return;if(!connected&&!connecting){if(manual&&!ip.isEmpty())connect(n);else discover(n);}else if(connected&&receiver!=null){receiver.query();queryProfile();queryDashboardMedia();queryDetails();}}
  void discover(Network n){disconnect();Diagnostics.event("DISCOVERY","start");connecting=true;activeNetwork=n;int g=generation;status.setText("Suche TX-NR656 im Netzwerk …");render();
   ConnectivityManager cm=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);LinkProperties lp=cm.getLinkProperties(n);
   ArrayList<java.net.InetAddress> targets=new ArrayList<>();if(lp!=null)for(LinkAddress l:lp.getLinkAddresses()){if(l.getAddress() instanceof java.net.Inet4Address){try{targets.add(Discovery.broadcast(l.getAddress(),l.getPrefixLength()));}catch(Exception ignored){}}}
@@ -230,7 +261,7 @@ public class MainActivity extends Activity {
  void send(String... commands){for(String c:commands)Diagnostics.command(demo?"DEMO_ACTION":"UI_ACTION",c);if(!connected){Diagnostics.event("UI","command blocked offline");return;}if(demo){for(String s:commands){if(s.startsWith("NSV")&&s.length()>=5){serviceCode=s.substring(3,5);service=netName(serviceCode);}else if(s.startsWith("PRS")||s.startsWith("PRZ")){int i=s.startsWith("PRS")?0:1;String value=s.substring(3);int n=currentPreset[i];if(value.equals("UP"))currentPreset[i]=n<1||n>=5?1:n+1;else if(value.equals("DOWN"))currentPreset[i]=n<=1?5:n-1;else receive(s);}else if(s.startsWith("TFR")||s.startsWith("ZTN")||s.startsWith("CTL")||s.startsWith("SWL")||s.startsWith("ZBL")){String key=s.startsWith("TFR")||s.startsWith("ZTN")?s.substring(0,4):s.substring(0,3);String old=audio.get(key);try{int number=Integer.parseInt(old);int delta=s.endsWith("DOWN")?-1:1;audio.put(key,String.format(Locale.ROOT,"%+d",Math.max(-10,Math.min(10,number+delta))));}catch(Exception ignored){}}else receive(s);}render();}else if(receiver!=null)receiver.send(commands);}
  void receive(String s){if(s.length()<5)return;String k=s.substring(0,3),v=s.substring(3);if(k.equals("NRI")){try{Capabilities c=Capabilities.parse(v);if(!c.model.equalsIgnoreCase("TX-NR656")){Diagnostics.event("PROFILE","unexpected model (omitted)");status.setText("Gerätemodell abweichend · Profil nicht übernommen");return;}capabilities=c;Diagnostics.event("PROFILE",c.summary());service=netName(serviceCode);nextProfileQuery=SystemClock.elapsedRealtime()+120000;status.setText("Verbunden · "+ip+" · Geräteprofil erkannt");}catch(Exception e){Diagnostics.error("PROFILE_PARSE_ERROR",e);}return;}if(v.equals("N/A")||v.equals("QSTN")){if(v.equals("N/A")&&(k.equals("MVL")||k.equals("ZVL"))){Zone unavailable=zones[k.equals("MVL")?0:1];unavailable.vol=-1;unavailable.pending=-1;unavailable.unavailable=true;Diagnostics.event("VOLUME","not available zone="+(k.equals("MVL")?1:2));}audio.remove(k);audio.remove(k+"B");audio.remove(k+"T");return;}
   Zone z=(k.equals("ZPW")||k.equals("ZVL")||k.equals("SLZ")||k.equals("ZMT"))?zones[1]:zones[0];
-  switch(k){case "PRS":case "PRZ":if(v.matches("[0-9A-Fa-f]{2}")){int n=Integer.parseInt(v,16);if(n>=1&&n<=40)currentPreset[k.equals("PRS")?0:1]=n;}break;case "LMD":case "CTL":case "SWL":case "ZBL":audio.put(k,v);break;case "TFR":case "ZTN":if(v.length()>=6&&v.charAt(0)=='B'&&v.charAt(3)=='T'){audio.put(k+"B",v.substring(1,3));audio.put(k+"T",v.substring(4,6));}break;case "PWR":case "ZPW":if(v.equals("00")||v.equals("01")){z.power=v.equals("01");if(!z.power)z.pending=-1;}break;case "MVL":case "ZVL":receiveVolume(z,v);break;case "SLI":case "SLZ":if(v.matches("[0-9A-Fa-f]{2}")){String next=v.toUpperCase(Locale.ROOT);if(!next.equals(z.source)){z.source=next;currentPreset[k.equals("SLI")?0:1]=-1;}}break;case "AMT":case "ZMT":if(v.equals("00")||v.equals("01"))z.mute=v.equals("01");break;case "NMS":if(v.length()>=9){serviceCode=v.substring(7,9).toUpperCase(Locale.ROOT);service=netName(serviceCode);}break;default:break;}
+  switch(k){case "PRS":case "PRZ":if(v.matches("[0-9A-Fa-f]{2}")){int n=Integer.parseInt(v,16);if(n>=1&&n<=40)currentPreset[k.equals("PRS")?0:1]=n;}break;case "LMD":case "CTL":case "SWL":case "ZBL":audio.put(k,v);break;case "TFR":case "ZTN":if(v.length()>=6&&v.charAt(0)=='B'&&v.charAt(3)=='T'){audio.put(k+"B",v.substring(1,3));audio.put(k+"T",v.substring(4,6));}break;case "PWR":case "ZPW":if(v.equals("00")||v.equals("01")){z.power=v.equals("01");if(!z.power)z.pending=-1;}break;case "MVL":case "ZVL":receiveVolume(z,v);break;case "SLI":case "SLZ":if(v.matches("[0-9A-Fa-f]{2}")){String next=v.toUpperCase(Locale.ROOT);if(!next.equals(z.source)){z.source=next;currentPreset[k.equals("SLI")?0:1]=-1;if(!demo)queryDashboardMedia();}}break;case "AMT":case "ZMT":if(v.equals("00")||v.equals("01"))z.mute=v.equals("01");break;case "NMS":if(v.length()>=9){serviceCode=v.substring(7,9).toUpperCase(Locale.ROOT);service=netName(serviceCode);}break;default:break;}
  }
  @Override protected void onStart(){super.onStart();SceneWidget.observeNetwork(this);SceneWidget.refreshAll(this);Diagnostics.event("APP","foreground");foreground=true;handler.post(poll);}
  @Override protected void onStop(){Diagnostics.event("APP","background");foreground=false;handler.removeCallbacks(poll);if(!demo){disconnect();render();}super.onStop();}

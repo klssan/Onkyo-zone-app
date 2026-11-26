@@ -1,5 +1,8 @@
-# DualZone Remote
+# Onkyo dahoam
 Unofficial local Android controller for TX-NR656.
+
+## v0.7.0
+Onkyo dahoam branding; Wohnzimmer / Esstisch labels; live volume changes sampled up to every 10 ms (network writes coalesced per zone and paced at 120 ms); relative linked +/- only while Esstisch uses SOURCE. Dashboard controls follow the reported source: FM/AM presets, NET service and transport, USB/Bluetooth transport, Google TV launcher, or a read-only SOURCE indicator. Transport uses NTC/NTZ and remains experimental on the real receiver; shared media confirmation remains in place. Existing widgets and app ID retained. Listening modes include Dolby Surround/Atmos (LMD80) and DTS Neural:X/DTS:X (LMD82); Pure Audio only when Esstisch is confirmed off. Receiver firmware, speaker layout and input format determine availability; the app shows only receiver-reported current mode.
 
 ## v0.6.1
 Consistent DualZone Remote name and logo in launcher, dashboard, detail screens, both widget sizes and notifications. APK package remains at.local.dualzone. CI explicitly checks application identity, APK signature, previous debug certificate and emulator installation, plus volume controls above 50 and widget rendering. Publishes a direct APK download only after all checks pass. Debug keys are generated on hosted runners; if signing certificates differ, uninstall the older app before installation (settings and widgets are lost). Persistent private signing key requires repository secret setup; no private key is stored in the public repository. Live receiver behavior is still not confirmed.

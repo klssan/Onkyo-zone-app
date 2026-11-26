@@ -32,7 +32,7 @@ final class SceneExecutor {
    String effective2=wanted[1].equals("80")?wanted[0]:wanted[1];
    boolean mainChanges=scene.zones[0].settings()&&(!scene.zones[0].source.isEmpty()||scene.zones[0].preset>0||!scene.zones[0].service.isEmpty());
    if(!scene.share&&on[0]&&on[1]){
-    if(mainChanges&&wanted[1].equals("80")&&scene.zones[1].source.isEmpty())throw new IOException("SOURCE folgt Hauptzone");
+    if(mainChanges&&wanted[1].equals("80")&&scene.zones[1].source.isEmpty())throw new IOException("SOURCE folgt Wohnzimmer");
     for(int i=0;i<2;i++){Scene.Zone z=scene.zones[i];String other=i==0?effective2:wanted[0];if(z.preset>0&&(other.equals("24")||other.equals("25"))||!z.service.isEmpty()&&other.equals("2B"))throw new IOException("Gemeinsame Medienquelle");
      if(!z.source.isEmpty()&&((z.source.equals("24")&&other.equals("25"))||(z.source.equals("25")&&other.equals("24"))))throw new IOException("Gemeinsamer FM/AM-Tuner");}
    }

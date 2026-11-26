@@ -39,9 +39,9 @@ public final class SceneWidget extends AppWidgetProvider {
  static int color(int tone){switch(tone){case WidgetStatus.GOOD:return 0xff7bd8bc;case WidgetStatus.WARN:return 0xffffbd85;case WidgetStatus.ERROR:return 0xffffa59f;default:return 0xffc2d0d1;}}
  static RemoteViews render(Context c,Scene scene,WidgetStatus.Line connection,WidgetStatus.Line execution){
   RemoteViews v=new RemoteViews(c.getPackageName(),R.layout.scene_widget);
-  v.setTextViewText(R.id.scene_name,scene==null?"DualZone Szene":scene.name);
-  v.setTextViewText(R.id.scene_main,scene==null?"Hauptzone: —":"Haupt: "+scene.zoneSummary(0));
-  v.setTextViewText(R.id.scene_second,scene==null?"Zone 2: —":"Zone 2: "+scene.zoneSummary(1));
+  v.setTextViewText(R.id.scene_name,scene==null?"Onkyo dahoam Szene":scene.name);
+  v.setTextViewText(R.id.scene_main,scene==null?"Wohnzimmer: —":"Wohnzimmer: "+scene.zoneSummary(0));
+  v.setTextViewText(R.id.scene_second,scene==null?"Esstisch: —":"Esstisch: "+scene.zoneSummary(1));
   v.setTextViewText(R.id.scene_connection,scene==null?"Tippen zum Einrichten":connection.text);
   v.setTextColor(R.id.scene_connection,color(scene==null?WidgetStatus.NEUTRAL:connection.tone));
   v.setTextViewText(R.id.scene_status,scene==null?"":execution.text);
@@ -60,7 +60,7 @@ public final class SceneWidget extends AppWidgetProvider {
   WidgetStatus.Line state=WidgetStatus.compact(connection,execution);
   v.setTextViewText(R.id.scene_status,scene==null?"":state.text);
   v.setTextColor(R.id.scene_status,color(state.tone));
-  v.setContentDescription(R.id.scene_run,scene==null?"DualZone Szene einrichten":scene.name+". "+scene.summary()+". "+connection.text+". "+execution.text);
+  v.setContentDescription(R.id.scene_run,scene==null?"Onkyo dahoam Szene einrichten":scene.name+". "+scene.summary()+". "+connection.text+". "+execution.text);
   v.setViewVisibility(R.id.scene_check,scene==null?View.GONE:View.VISIBLE);
   return v;
  }

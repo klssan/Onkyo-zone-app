@@ -12,7 +12,7 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
   Bundle result=new Bundle();final Throwable[] problem={null};
   runOnMainSync(()->{try{
    Context c=getTargetContext();long now=System.currentTimeMillis();
-   require(c.getApplicationInfo().loadLabel(c.getPackageManager()).toString().equals("DualZone Remote"),"app label");
+   require(c.getApplicationInfo().loadLabel(c.getPackageManager()).toString().equals("Onkyo dahoam"),"app label");
    require(c.getApplicationInfo().icon==R.drawable.dz_logo,"launcher icon");
    require(c.getDrawable(R.drawable.dz_logo)!=null,"logo drawable");
    Scene scene=new Scene("FM4 Küche","Radio",new Scene.Zone(Scene.KEEP,"",-1,-1,""),new Scene.Zone(Scene.ON,"24",40,4,""),false,false);
@@ -20,8 +20,8 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
    RemoteViews views=SceneWidget.render(c,scene,WidgetStatus.connection(false,false,WidgetStatus.REACHABLE,now,true,now,null),last);
    View v=views.apply(c,new FrameLayout(c));
    require(value(v,R.id.scene_name).equals("FM4 Küche"),"name");
-   require(value(v,R.id.scene_main).equals("Haupt: Unverändert"),"main unchanged");
-   require(value(v,R.id.scene_second).equals("Zone 2: An · FM P04 · Vol. 40"),"configured action");
+   require(value(v,R.id.scene_main).equals("Wohnzimmer: Unverändert"),"main unchanged");
+   require(value(v,R.id.scene_second).equals("Esstisch: An · FM P04 · Vol. 40"),"configured action");
    require(value(v,R.id.scene_connection).equals("Kein WLAN/LAN"),"offline");
    require(value(v,R.id.scene_status).contains("Bestätigt"),"previous run retained");
    require(v.findViewById(R.id.scene_check).getVisibility()==View.VISIBLE,"read-only check visible");
@@ -30,7 +30,7 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
    v.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(height,View.MeasureSpec.EXACTLY));v.layout(0,0,width,height);
    for(int id:new int[]{R.id.scene_name,R.id.scene_main,R.id.scene_second,R.id.scene_connection,R.id.scene_status}){View item=v.findViewById(id);require(item.getHeight()>0&&item.getWidth()>0,"clipped widget row "+id);}
    View small=SceneWidget.compact(c,scene,WidgetStatus.connection(false,false,WidgetStatus.REACHABLE,now,true,now,null),last).apply(c,new FrameLayout(c));
-   require(value(small,R.id.scene_actions_text).equals("Z2 FM4 · 40"),"compact action");
+   require(value(small,R.id.scene_actions_text).equals("ET FM4 · 40"),"compact action");
    require(value(small,R.id.scene_status).equals("Offline"),"compact offline");
    require(small.findViewById(R.id.scene_brand)!=null&&v.findViewById(R.id.scene_brand)!=null,"branding on both widget sizes");
    small.measure(View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY));small.layout(0,0,Math.round(64*d),Math.round(64*d));
@@ -54,6 +54,16 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
      a.setVolume(1,55);a.render();require(a.zones[1].vol==55,"zone 2 volume above 50");
      a.receive("ZVLN/A");a.render();require(!a.zones[1].slider.isEnabled(),"unavailable volume");
      a.receive("ZVL37");a.render();require(a.zones[1].slider.isEnabled(),"volume recovered");
+     require(a.groupPlus.isEnabled(),"linked SOURCE available");int before=a.zones[0].vol,second=a.zones[1].vol;a.groupPlus.performClick();require(a.zones[0].vol==before+1&&a.zones[1].vol==second+1,"relative group step");
+     a.receive("SLZ24");a.render();require(a.linked.getVisibility()==View.GONE,"linked only SOURCE");require(a.zones[1].mediaRow.getVisibility()==View.VISIBLE&&a.zones[1].mediaPrev.getVisibility()==View.VISIBLE,"FM controls");a.receive("PRZ04");a.render();require(a.zones[1].mediaChoice.getText().toString().contains("Demo FM 4"),"preset label");
+     a.receive("SLZ12");a.render();require(a.zones[1].mediaChoice.getText().toString().equals("Google TV öffnen"),"TV shortcut");
+     a.receive("SLZ03");a.render();require(a.zones[1].mediaRow.getVisibility()==View.GONE,"AUX hides media controls");
+     a.receive("SLZ80");a.render();require(a.zones[1].mediaChoice.getText().toString().contains("folgt Wohnzimmer"),"SOURCE follows");
+     a.dragVolume(0,52,false);require(a.zones[0].vol==52,"live drag before release");
+     require(!a.listeningModes().containsKey("11"),"Pure Audio hidden while Esstisch on");
+     a.receive("ZPW00");require(a.listeningModes().containsKey("11"),"Pure Audio when Esstisch off");
+     require(a.listeningModes().containsKey("80")&&a.listeningModes().containsKey("82"),"surround choices");
+     a.receive("LMD80");require(a.modeName(a.audio.get("LMD")).contains("Dolby Surround"),"confirmed mode");
     }catch(Throwable e){problem[0]=e;}});
    }catch(Throwable e){problem[0]=e;}
    finally{if(activity!=null){final MainActivity a=activity;runOnMainSync(a::finish);}}

@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 public final class Protocol {
  public static byte[] encode(String command) {
-  if (!command.matches("[A-Z0-9?.+-]+")) throw new IllegalArgumentException("Command");
+  if (!command.matches("[A-Z0-9?.+-]+")&&!command.equals("NTCP/P")&&!command.equals("NTZP/P")) throw new IllegalArgumentException("Command");
   byte[] payload=("!1"+command+"\r\n").getBytes(StandardCharsets.US_ASCII);
   return ByteBuffer.allocate(16+payload.length).putInt(0x49534350).putInt(16).putInt(payload.length).put((byte)1).put(new byte[3]).put(payload).array();
  }

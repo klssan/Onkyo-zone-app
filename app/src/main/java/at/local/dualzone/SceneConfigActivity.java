@@ -17,7 +17,7 @@ public final class SceneConfigActivity extends Activity {
  class ZoneForm{
   Spinner power,source,service;EditText volume,preset;String[] codes;String[] services=Scene.NET_CODES;
   ZoneForm(int index,Scene.Zone old){
-   text(root,index==0?"Hauptzone":"Zone 2",22);
+   text(root,index==0?"Wohnzimmer":"Esstisch",22);
    text(root,"Power",14);power=spin(root,new String[]{"Unverändert","Einschalten","Ausschalten"},old.power);
    ArrayList<String> cs=new ArrayList<>(),ns=new ArrayList<>();for(int i=0;i<Scene.SOURCE_CODES.length;i++){String k=Scene.SOURCE_CODES[i];if(index==0&&k.equals("80")||index==1&&k.equals("05"))continue;cs.add(k);ns.add(Scene.SOURCE_NAMES[i]);}codes=cs.toArray(new String[0]);
    text(root,"Quelle",14);source=spin(root,ns.toArray(new String[0]),cs.indexOf(old.source));
@@ -33,7 +33,7 @@ public final class SceneConfigActivity extends Activity {
  }
  @Override public void onCreate(Bundle b){super.onCreate(b);id=getIntent().getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,AppWidgetManager.INVALID_APPWIDGET_ID);Intent result=new Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id);setResult(RESULT_CANCELED,result);if(!SceneWidget.owns(this,id)){finish();return;}
   Scene old=SceneStore.get(this,id);ScrollView scroll=new ScrollView(this);root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(18),dp(12),dp(18),dp(16));scroll.addView(root);setContentView(scroll);
-  ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.dz_logo);logo.setContentDescription("DualZone Remote");root.addView(logo,new LinearLayout.LayoutParams(dp(48),dp(48)));text(root,"DualZone Remote · Szene",26);text(root,"Ein Tippen startet die gewählten Aktionen. Radio mit Einschalten in genau einer Zone: erneut tippen schaltet diese Zone aus, wenn Quelle und ggf. Speicherplatz übereinstimmen.",15);
+  ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.dz_logo);logo.setContentDescription("Onkyo dahoam");root.addView(logo,new LinearLayout.LayoutParams(dp(48),dp(48)));text(root,"Onkyo dahoam · Szene",26);text(root,"Ein Tippen startet die gewählten Aktionen. Radio mit Einschalten in genau einer Zone: erneut tippen schaltet diese Zone aus, wenn Quelle und ggf. Speicherplatz übereinstimmen.",15);
   text(root,"Name",14);name=input(root,"z. B. FM4 Küche",old==null?"":old.name,false);name.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(40)});
   text(root,"Symbol",14);icon=spin(root,icons,old==null?0:Arrays.asList(icons).indexOf(old.icon));
   Scene.Zone empty=new Scene.Zone(Scene.KEEP,"",-1,-1,"");

@@ -4,7 +4,7 @@
  android:orientation="vertical" android:background="@drawable/scene_background" android:padding="10dp">
  <LinearLayout android:layout_width="match_parent" android:layout_height="44dp" android:orientation="horizontal" android:gravity="center_vertical">
   <LinearLayout android:id="@+id/scene_run" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center_vertical">
-   <ImageView android:id="@+id/scene_brand" android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/dz_logo" android:contentDescription="DualZone Remote" android:layout_marginEnd="5dp"/>
+   <ImageView android:id="@+id/scene_brand" android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/dz_logo" android:contentDescription="Onkyo dahoam" android:layout_marginEnd="5dp"/>
    <TextView android:id="@+id/scene_icon" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#7BD8BC" android:textSize="22sp" android:paddingEnd="8dp" android:text="▶"/>
    <TextView android:id="@+id/scene_name" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:textColor="#F1F5F4" android:textStyle="bold" android:textSize="16sp" android:maxLines="2" android:ellipsize="end"/>
   </LinearLayout>

@@ -22,7 +22,7 @@ public class SceneTest {
   radio.state.put("ZPW","01");radio.state.put("PRZ","05");check(!SceneExecutor.toggleRadioOff(scene,radio)&&radio.writes.isEmpty());
   radio.state.put("PRZ","N/A");try{SceneExecutor.toggleRadioOff(scene,radio);throw new AssertionError("unknown preset");}catch(IOException ok){check(radio.writes.isEmpty());}
   radio.state.put("SLZ","12");check(!SceneExecutor.toggleRadioOff(scene,radio)&&radio.writes.isEmpty());
-  check(scene.compactSummary().equals("Z2 FM4 · 40"));
+  check(scene.compactSummary().equals("ET FM4 · 40"));
   Fake shared=new Fake();shared.state.put("SLI","24");try{SceneExecutor.execute(scene,shared);throw new AssertionError("shared FM");}catch(SceneExecutor.SceneException e){check(e.confirmed==0&&shared.writes.isEmpty());}
   Scene allowed=new Scene("FM4","Radio",keep(),fm(),true,false);check(SceneExecutor.execute(allowed,shared)==4);
   Fake partial=new Fake();partial.fail="SLZ";try{SceneExecutor.execute(scene,partial);throw new AssertionError();}catch(SceneExecutor.SceneException e){check(e.confirmed==2&&partial.writes.size()==3);}
