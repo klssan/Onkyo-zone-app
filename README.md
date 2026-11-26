@@ -1,6 +1,8 @@
 # DualZone Remote
 Unofficial local Android controller for TX-NR656.
 
+## v0.6.1
+Consistent DualZone Remote name and logo in launcher, dashboard, detail screens, both widget sizes and notifications. APK package remains at.local.dualzone. CI explicitly checks application identity, APK signature, previous debug certificate and emulator installation, plus volume controls above 50 and widget rendering. Publishes a direct APK download only after all checks pass. Debug keys are generated on hosted runners; if signing certificates differ, uninstall the older app before installation (settings and widgets are lost). Persistent private signing key requires repository secret setup; no private key is stored in the public repository. Live receiver behavior is still not confirmed.
 ## v0.6
 Compact 1×1 scene widgets (actual minimum determined by Android launcher), with a larger layout when resized. Explicit single-zone radio ON scenes toggle off only if the real receiver confirms matching power, source and configured preset. Other scenes remain one-way. No cached state is used for deciding what to switch off. Last confirmed action has a timestamp, not a guaranteed live status. Logo uses a simplified vector rendition of the receiver-and-two-zones concept in the launcher, dashboard, configuration and compact widgets; monochrome notification icon.
 ## v0.5.2

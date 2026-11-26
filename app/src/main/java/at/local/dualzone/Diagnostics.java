@@ -51,7 +51,7 @@ final class Diagnostics {
  static void error(String tag,Throwable t){event(tag,t.getClass().getSimpleName());}
  static synchronized String snapshot()throws IOException{
   prune(System.currentTimeMillis());
-  StringBuilder b=new StringBuilder("Onkyo Dual Zone diagnostic format 2\nLocal logs; newest entries last. IP/MAC, SSID, credentials, custom names, media metadata and raw XML are omitted. Times and listening actions remain visible. Correlation is observational, not an ISCP transaction ID.\n");
+  StringBuilder b=new StringBuilder("DualZone Remote diagnostic format 2\nLocal logs; newest entries last. IP/MAC, SSID, credentials, custom names, media metadata and raw XML are omitted. Times and listening actions remain visible. Correlation is observational, not an ISCP transaction ID.\n");
   if(previous!=null&&previous.isFile())b.append(new String(Files.readAllBytes(previous.toPath()),StandardCharsets.UTF_8));
   if(current!=null&&current.isFile())b.append(new String(Files.readAllBytes(current.toPath()),StandardCharsets.UTF_8));return b.toString();
  }

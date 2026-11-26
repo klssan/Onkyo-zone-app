@@ -1,6 +1,6 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="3dp" android:background="@drawable/scene_background">
  <LinearLayout android:layout_width="match_parent" android:layout_height="17dp" android:orientation="horizontal" android:gravity="center_vertical">
-  <ImageView android:layout_width="16dp" android:layout_height="16dp" android:src="@drawable/dz_logo" android:contentDescription="DualZone"/>
+  <ImageView android:id="@+id/scene_brand" android:layout_width="16dp" android:layout_height="16dp" android:src="@drawable/dz_logo" android:contentDescription="DualZone"/>
   <TextView android:id="@+id/scene_check" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:text="↻" android:textSize="11sp" android:gravity="center" android:textColor="#B5C8C7" android:contentDescription="Verbindung prüfen"/>
   <TextView android:id="@+id/scene_edit" android:layout_width="18dp" android:layout_height="match_parent" android:text="⚙" android:textSize="12sp" android:textColor="#B5C8C7" android:gravity="center" android:contentDescription="Szene bearbeiten"/>
  </LinearLayout>
@@ -9,5 +9,5 @@
   <TextView android:id="@+id/scene_actions_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="9sp" android:textColor="#D2E0DF" android:gravity="center" android:maxLines="2" android:ellipsize="end" android:includeFontPadding="false"/>
  </LinearLayout>
  <TextView android:id="@+id/scene_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="9sp" android:textStyle="bold" android:gravity="center" android:singleLine="true" android:ellipsize="end" android:includeFontPadding="false"/>
- <TextView android:id="@+id/scene_actions" android:layout_width="0dp" android:layout_height="0dp"/>
+
 </LinearLayout>

@@ -12,6 +12,9 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
   Bundle result=new Bundle();final Throwable[] problem={null};
   runOnMainSync(()->{try{
    Context c=getTargetContext();long now=System.currentTimeMillis();
+   require(c.getApplicationInfo().loadLabel(c.getPackageManager()).toString().equals("DualZone Remote"),"app label");
+   require(c.getApplicationInfo().icon==R.drawable.dz_logo,"launcher icon");
+   require(c.getDrawable(R.drawable.dz_logo)!=null,"logo drawable");
    Scene scene=new Scene("FM4 Küche","Radio",new Scene.Zone(Scene.KEEP,"",-1,-1,""),new Scene.Zone(Scene.ON,"24",40,4,""),false,false);
    WidgetStatus.Line last=WidgetStatus.execution("Bestätigt",now,false,0,false);
    RemoteViews views=SceneWidget.render(c,scene,WidgetStatus.connection(false,false,WidgetStatus.REACHABLE,now,true,now,null),last);
@@ -29,11 +32,32 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
    View small=SceneWidget.compact(c,scene,WidgetStatus.connection(false,false,WidgetStatus.REACHABLE,now,true,now,null),last).apply(c,new FrameLayout(c));
    require(value(small,R.id.scene_actions_text).equals("Z2 FM4 · 40"),"compact action");
    require(value(small,R.id.scene_status).equals("Offline"),"compact offline");
+   require(small.findViewById(R.id.scene_brand)!=null&&v.findViewById(R.id.scene_brand)!=null,"branding on both widget sizes");
    small.measure(View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY));small.layout(0,0,Math.round(64*d),Math.round(64*d));
    require(small.findViewById(R.id.scene_actions_text).getHeight()>0,"compact action height");
    RemoteViews reachable=SceneWidget.render(c,scene,WidgetStatus.connection(false,true,WidgetStatus.REACHABLE,now,true,now,null),WidgetStatus.execution("Teilweise (2)",now,false,0,false));
    View other=reachable.apply(c,new FrameLayout(c));require(value(other,R.id.scene_connection).contains("erreichbar")&&value(other,R.id.scene_status).contains("Teilweise"),"separate result");
   }catch(Throwable e){problem[0]=e;}});
+  if(problem[0]==null){
+   MainActivity activity=null;
+   try{
+    activity=(MainActivity)startActivitySync(new android.content.Intent(getTargetContext(),MainActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+    final MainActivity a=activity;
+    runOnMainSync(()->{try{
+     a.startDemo();
+     a.receive("MVL037");a.receive("ZVL32");a.render();
+     require(a.zones[0].slider.isEnabled(),"volume above 50 enabled");
+     require(a.zones[0].slider.getMax()==82,"profile maximum");
+     require(a.zones[0].vol==55,"padded receiver volume");
+     a.setVolume(0,60);a.render();require(a.zones[0].vol==60,"raise volume");
+     a.setVolume(0,45);a.render();require(a.zones[0].vol==45,"lower volume");
+     a.setVolume(1,55);a.render();require(a.zones[1].vol==55,"zone 2 volume above 50");
+     a.receive("ZVLN/A");a.render();require(!a.zones[1].slider.isEnabled(),"unavailable volume");
+     a.receive("ZVL37");a.render();require(a.zones[1].slider.isEnabled(),"volume recovered");
+    }catch(Throwable e){problem[0]=e;}});
+   }catch(Throwable e){problem[0]=e;}
+   finally{if(activity!=null){final MainActivity a=activity;runOnMainSync(a::finish);}}
+  }
   if(problem[0]==null){result.putString("widget_render_ok","true");finish(Activity.RESULT_OK,result);}
   else{result.putString("widget_render_error",problem[0].toString());finish(Activity.RESULT_CANCELED,result);}
  }

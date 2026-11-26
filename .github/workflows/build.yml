@@ -34,14 +34,33 @@ jobs:
           java -cp /tmp/onkyo-tests at.local.dualzone.WidgetStatusTest
           java -cp /tmp/onkyo-tests at.local.dualzone.VolumeTest
       - run: gradle --no-daemon assembleDebug assembleDebugAndroidTest
+      - name: Verify APK identity and signature
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          "$TOOLS/aapt" dump badging "$APK" > /tmp/apk-info.txt
+          cat /tmp/apk-info.txt
+          grep -F "package: name='at.local.dualzone' versionCode='11' versionName='0.6.1'" /tmp/apk-info.txt
+          grep -F "application-label:'DualZone Remote'" /tmp/apk-info.txt
+          "$TOOLS/apksigner" verify --verbose --print-certs "$APK" | tee /tmp/new-cert.txt
+          gh api repos/${{ github.repository }}/actions/artifacts/15144810897/zip > /tmp/old.zip
+          unzip -p /tmp/old.zip app-debug.apk > /tmp/old.apk
+          "$TOOLS/apksigner" verify --print-certs /tmp/old.apk | tee /tmp/old-cert.txt
+          if diff <(grep 'certificate SHA-256 digest:' /tmp/new-cert.txt) <(grep 'certificate SHA-256 digest:' /tmp/old-cert.txt); then
+            echo "Previous v0.5.1 certificate matches"
+          else
+            echo "Previous v0.5.1 certificate differs; uninstall older app before installing."
+          fi
       - uses: actions/upload-artifact@v4
         with:
-          name: OnkyoDualZone-v0.6-debug
+          name: DualZone-Remote-v0.6.1-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
-          name: OnkyoDualZone-v0.6-ui-test
+          name: DualZone-Remote-v0.6.1-ui-test
           path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           if-no-files-found: error
   emulator:
@@ -51,11 +70,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: OnkyoDualZone-v0.6-debug
+          name: DualZone-Remote-v0.6.1-debug
           path: app/build/outputs/apk/debug
       - uses: actions/download-artifact@v4
         with:
-          name: OnkyoDualZone-v0.6-ui-test
+          name: DualZone-Remote-v0.6.1-ui-test
           path: app/build/outputs/apk/androidTest/debug
       - name: Enable KVM
         run: |
@@ -68,12 +87,22 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: |
-            smoke=0
-            widget=0
-            python3 tests/ui_smoke.py || smoke=$?
-            python3 tests/widget_render.py || widget=$?
-            if [ "$smoke" -ne 0 ] || [ "$widget" -ne 0 ]; then
-              adb logcat -d -t 400 -s AndroidRuntime ActivityTaskManager || true
-              exit 1
-            fi
+          script: python3 tests/run_android_checks.py
+  release:
+    needs: [apk, emulator]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: DualZone-Remote-v0.6.1-debug
+          path: release
+      - name: Publish tested APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mv release/app-debug.apk release/DualZone-Remote-v0.6.1.apk
+          gh release create v0.6.1 release/DualZone-Remote-v0.6.1.apk --target "${{ github.sha }}" --title "DualZone Remote 0.6.1" --notes "Automated JVM, APK identity/signature and Android emulator checks passed. Debug signing may differ from previous versions: uninstall the old app once before installing. Real receiver volume and launcher behavior still require device testing."

@@ -30,10 +30,10 @@ public class MainActivity extends Activity {
  void weighted(LinearLayout r,View v,int h){r.addView(v,new LinearLayout.LayoutParams(0,h<0?h:dp(h),1));}
  void gap(LinearLayout r,int h){add(r,new View(this),1,h);}
  void hgap(LinearLayout r,int w){add(r,new View(this),w,1);}
- @Override public void onCreate(Bundle b){super.onCreate(b);Diagnostics.open(getFilesDir());Diagnostics.event("APP","v0.6 Android API="+Build.VERSION.SDK_INT+" screenDp="+getResources().getConfiguration().screenWidthDp+"x"+getResources().getConfiguration().screenHeightDp);prefs=getSharedPreferences("config",MODE_PRIVATE);
+ @Override public void onCreate(Bundle b){super.onCreate(b);Diagnostics.open(getFilesDir());Diagnostics.event("APP","v0.6.1 Android API="+Build.VERSION.SDK_INT+" screenDp="+getResources().getConfiguration().screenWidthDp+"x"+getResources().getConfiguration().screenHeightDp);prefs=getSharedPreferences("config",MODE_PRIVATE);
   getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
   LinearLayout root=col();root.setBackgroundColor(BG);root.setPadding(dp(12),dp(6),dp(12),dp(6));dashboard=root;setContentView(root);
-  LinearLayout head=row();ImageView brand=new ImageView(this);brand.setImageResource(R.drawable.dz_logo);brand.setContentDescription("DualZone Remote");add(head,brand,30,30);hgap(head,5);TextView title=label("TX-NR656",19,FG);title.setTypeface(null,Typeface.BOLD);weighted(head,title,44);
+  LinearLayout head=row();ImageView brand=new ImageView(this);brand.setImageResource(R.drawable.dz_logo);brand.setContentDescription("DualZone Remote");add(head,brand,30,30);hgap(head,5);TextView title=label("DualZone",17,FG);title.setContentDescription("DualZone Remote – TX-NR656");title.setTypeface(null,Typeface.BOLD);weighted(head,title,44);
   Button tv=btn("TV");tv.setContentDescription("Google TV öffnen");add(head,tv,48,44);hgap(head,6);tv.setOnClickListener(v->openGoogleTv());
   Button config=btn("Verbindung");add(head,config,112,44);config.setOnClickListener(v->connectionMenu());add(root,head,-1,44);
   status=label("",13,MUTED);status.setMaxLines(2);status.setOnClickListener(v->diagnosticsDialog());add(root,status,-1,34);gap(root,4);
@@ -67,9 +67,9 @@ public class MainActivity extends Activity {
   if(target==shownVolume(z))return false;z.pending=target;z.pendingUntil=SystemClock.elapsedRealtime()+6000;
   Diagnostics.event("VOLUME","requested zone="+(idx+1)+" raw="+target+" scale="+scale(idx)+" max="+maxVolume(idx));return true;
  }
- void setVolume(int idx,int target){if(markVolume(idx,target))send((idx==0?"MVL":"ZVL")+Protocol.hex(target));}
+ void setVolume(int idx,int target){if(markVolume(idx,target)){String prefix=idx==0?"MVL":"ZVL";send(prefix+Protocol.hex(target));if(!demo&&receiver!=null)receiver.send(prefix+"QSTN");}}
  void setVolumes(int a,int b){if(!canLink()||a<0||b<0||a>maxVolume(0)||b>maxVolume(1))return;ArrayList<String> commands=new ArrayList<>();if(markVolume(0,a))commands.add("MVL"+Protocol.hex(a));if(markVolume(1,b))commands.add("ZVL"+Protocol.hex(b));if(!commands.isEmpty())send(commands.toArray(new String[0]));}
- void expireVolumes(){long now=SystemClock.elapsedRealtime();for(int i=0;i<2;i++){Zone z=zones[i];if(z.pending>=0&&now>=z.pendingUntil){Diagnostics.event("VOLUME","unconfirmed zone="+(i+1)+" requested="+z.pending+" observed="+z.vol);z.pending=-1;}}}
+ void expireVolumes(){long now=SystemClock.elapsedRealtime();for(int i=0;i<2;i++){Zone z=zones[i];if(z.pending>=0&&now>=z.pendingUntil){Diagnostics.event("VOLUME","unconfirmed zone="+(i+1)+" requested="+z.pending+" observed="+z.vol);z.pending=-1;Toast.makeText(this,"Lautstärke nicht bestätigt · Zone "+(i+1),Toast.LENGTH_SHORT).show();}}}
  String volumeText(Zone z){return z.unavailable?"–":Protocol.volumeLabel(shownVolume(z),scale(zoneIndex(z)))+(z.pending>=0?"…":"");}
  void receiveVolume(Zone z,String v){int raw=Protocol.volume(v);if(raw<0){Diagnostics.event("VOLUME","invalid reply zone="+(zoneIndex(z)+1));return;}z.unavailable=false;z.vol=raw;if(z.pending==raw)z.pending=-1;}
  boolean canLink(){return canVolume(zones[0])&&canVolume(zones[1])&&zones[1].source.equals("80");}
@@ -120,7 +120,7 @@ public class MainActivity extends Activity {
  void details(int idx){Diagnostics.event("UI","details zone="+(idx+1));
   detailIndex=idx; detailDragging=false; detailCommands.clear();audioLabels.clear();audioRows.clear();modeButton=null;profileNote=null;
   detailPage=col();detailPage.setBackgroundColor(BG);detailPage.setPadding(dp(12),dp(6),dp(12),dp(6));
-  LinearLayout top=row();Button back=btn("‹");add(top,back,48,48);hgap(top,10);weighted(top,label(idx==0?"Hauptzone":"Nebenzone",23,FG),48);back.setOnClickListener(v->closeDetails());add(detailPage,top,-1,48);
+  LinearLayout top=row();Button back=btn("‹");add(top,back,48,48);hgap(top,6);ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.dz_logo);logo.setContentDescription("DualZone Remote");add(top,logo,28,28);hgap(top,6);weighted(top,label(idx==0?"Hauptzone":"Nebenzone",21,FG),48);back.setOnClickListener(v->closeDetails());add(detailPage,top,-1,48);
   detailStatus=label("",13,MUTED);add(detailPage,detailStatus,-1,32);
   ScrollView scroll=new ScrollView(this);LinearLayout content=col();scroll.addView(content);detailPage.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout controls=section(content,"Steuerung");
@@ -187,7 +187,7 @@ public class MainActivity extends Activity {
  }
  void widgetMenu(){
   android.appwidget.AppWidgetManager m=android.appwidget.AppWidgetManager.getInstance(this);
-  new AlertDialog.Builder(this).setTitle("Homescreen-Widgets").setMessage("Erstelle beliebig viele Onkyo-Szenen. Ein Tippen führt die gewählten Einstellungen aus, auch ohne geöffnete App. FM4 beispielsweise: Zone 2 einschalten, FM wählen, Speicherplatz einstellen, Lautstärke 40. Hauptzone unverändert. Nach dem Hinzufügen auf Einrichten oder das Zahnrad tippen. ↻ prüft nur die Verbindung; Titel und Aktionsbereich starten die Szene.")
+  new AlertDialog.Builder(this).setTitle("Homescreen-Widgets").setMessage("Erstelle beliebig viele DualZone-Szenen. Ein Tippen führt die gewählten Einstellungen aus, auch ohne geöffnete App. FM4 beispielsweise: Zone 2 einschalten, FM wählen, Speicherplatz einstellen, Lautstärke 40. Hauptzone unverändert. Nach dem Hinzufügen auf Einrichten oder das Zahnrad tippen. ↻ prüft nur die Verbindung; Titel und Aktionsbereich starten die Szene.")
    .setNegativeButton("Schließen",null).setPositiveButton("Widget hinzufügen",(d,n)->{if(m.isRequestPinAppWidgetSupported()){if(!m.requestPinAppWidget(new ComponentName(this,SceneWidget.class),null,null))Toast.makeText(this,"Bitte über Homescreen-Widget-Auswahl hinzufügen",Toast.LENGTH_LONG).show();}else Toast.makeText(this,"Homescreen lange drücken → Widgets → DualZone Remote",Toast.LENGTH_LONG).show();}).show();
  }
  void connectionMenu(){new AlertDialog.Builder(this).setTitle("Verbindung & Diagnose").setItems(new String[]{"Automatisch suchen","IP manuell eingeben","Demo","Diagnosebericht","Homescreen-Widgets"},(d,n)->{
@@ -200,7 +200,7 @@ public class MainActivity extends Activity {
   try{String s=Diagnostics.snapshot();info+="\n\nLetzte Einträge:\n"+s.substring(Math.max(0,s.length()-1300));}catch(java.io.IOException e){Diagnostics.error("LOG_READ_ERROR",e);}
   TextView t=label(info,13,FG);t.setPadding(dp(16),dp(8),dp(16),dp(8));t.setTextIsSelectable(true);ScrollView sc=new ScrollView(this);sc.addView(t);
   new AlertDialog.Builder(this).setTitle("Diagnosebericht").setView(sc)
-   .setPositiveButton("TXT exportieren",(d,n)->{Diagnostics.event("UI","export requested");Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("text/plain");i.addCategory(Intent.CATEGORY_OPENABLE);i.putExtra(Intent.EXTRA_TITLE,"Onkyo-Diagnose-v0.6.txt");try{startActivityForResult(i,404);}catch(ActivityNotFoundException e){Diagnostics.error("EXPORT_ERROR",e);Toast.makeText(this,"Dateiauswahl nicht verfügbar",Toast.LENGTH_LONG).show();}})
+   .setPositiveButton("TXT exportieren",(d,n)->{Diagnostics.event("UI","export requested");Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("text/plain");i.addCategory(Intent.CATEGORY_OPENABLE);i.putExtra(Intent.EXTRA_TITLE,"DualZone-Diagnose-v0.6.1.txt");try{startActivityForResult(i,404);}catch(ActivityNotFoundException e){Diagnostics.error("EXPORT_ERROR",e);Toast.makeText(this,"Dateiauswahl nicht verfügbar",Toast.LENGTH_LONG).show();}})
    .setNeutralButton("Log löschen",(d,n)->new AlertDialog.Builder(this).setMessage("Alle bisherigen Diagnoseeinträge löschen?").setNegativeButton("Abbrechen",null).setPositiveButton("Löschen",(x,y)->{try{Diagnostics.clear();}catch(java.io.IOException e){Diagnostics.error("LOG_CLEAR_ERROR",e);}}).show()).setNegativeButton("Schließen",null).show();
  }
  @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request!=404||result!=RESULT_OK||data==null||data.getData()==null)return;

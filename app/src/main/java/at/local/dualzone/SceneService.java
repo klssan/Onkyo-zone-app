@@ -17,8 +17,8 @@ public final class SceneService extends Service {
   int id=i==null?-1:i.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,-1);
   String action=i==null?"":i.getAction();boolean checkOnly=SceneWidget.CHECK.equals(action);
   if(!running){
-   NotificationManager nm=getSystemService(NotificationManager.class);nm.createNotificationChannel(new NotificationChannel(CHANNEL,"Onkyo-Szenen",NotificationManager.IMPORTANCE_LOW));
-   Notification n=new Notification.Builder(this,CHANNEL).setSmallIcon(R.drawable.dz_notification).setContentTitle(checkOnly?"Onkyo-Verbindung prüfen":"Onkyo-Szene").setContentText(checkOnly?"Status wird abgefragt":"Receiver wird gesteuert").setOngoing(true).build();
+   NotificationManager nm=getSystemService(NotificationManager.class);nm.createNotificationChannel(new NotificationChannel(CHANNEL,"DualZone Szenen",NotificationManager.IMPORTANCE_LOW));
+   Notification n=new Notification.Builder(this,CHANNEL).setSmallIcon(R.drawable.dz_notification).setContentTitle(checkOnly?"DualZone Verbindung prüfen":"DualZone Szene").setContentText(checkOnly?"Status wird abgefragt":"Receiver wird gesteuert").setOngoing(true).build();
    if(Build.VERSION.SDK_INT>=34)startForeground(520,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE);else startForeground(520,n);
   }
   if(!SceneWidget.owns(this,id)||!checkOnly&&!SceneWidget.RUN.equals(action)){if(!running)stopSelf();return START_NOT_STICKY;}

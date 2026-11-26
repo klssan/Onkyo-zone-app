@@ -39,7 +39,7 @@ public final class SceneWidget extends AppWidgetProvider {
  static int color(int tone){switch(tone){case WidgetStatus.GOOD:return 0xff7bd8bc;case WidgetStatus.WARN:return 0xffffbd85;case WidgetStatus.ERROR:return 0xffffa59f;default:return 0xffc2d0d1;}}
  static RemoteViews render(Context c,Scene scene,WidgetStatus.Line connection,WidgetStatus.Line execution){
   RemoteViews v=new RemoteViews(c.getPackageName(),R.layout.scene_widget);
-  v.setTextViewText(R.id.scene_name,scene==null?"Onkyo Szene":scene.name);
+  v.setTextViewText(R.id.scene_name,scene==null?"DualZone Szene":scene.name);
   v.setTextViewText(R.id.scene_main,scene==null?"Hauptzone: —":"Haupt: "+scene.zoneSummary(0));
   v.setTextViewText(R.id.scene_second,scene==null?"Zone 2: —":"Zone 2: "+scene.zoneSummary(1));
   v.setTextViewText(R.id.scene_connection,scene==null?"Tippen zum Einrichten":connection.text);
@@ -72,13 +72,14 @@ public final class SceneWidget extends AppWidgetProvider {
   Intent edit=new Intent(c,SceneConfigActivity.class).setAction(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).setData(Uri.parse("onkyo://edit/"+id)).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
   PendingIntent editPI=PendingIntent.getActivity(c,id,edit,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
   v.setOnClickPendingIntent(R.id.scene_edit,editPI);
-  if(scene==null){v.setOnClickPendingIntent(R.id.scene_run,editPI);v.setOnClickPendingIntent(R.id.scene_actions,editPI);}
+  if(scene==null){v.setOnClickPendingIntent(R.id.scene_run,editPI);if(!small)v.setOnClickPendingIntent(R.id.scene_actions,editPI);}
   else{
    Intent run=new Intent(c,SceneService.class).setAction(RUN).setData(Uri.parse("onkyo://run/"+id)).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id);
    Intent check=new Intent(c,SceneService.class).setAction(CHECK).setData(Uri.parse("onkyo://check/"+id)).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id);
    v.setOnClickPendingIntent(R.id.scene_run,PendingIntent.getForegroundService(c,id,run,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE));
-   v.setOnClickPendingIntent(R.id.scene_actions,PendingIntent.getForegroundService(c,id,run,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE));
+   if(!small)v.setOnClickPendingIntent(R.id.scene_actions,PendingIntent.getForegroundService(c,id,run,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE));
    v.setOnClickPendingIntent(R.id.scene_check,PendingIntent.getForegroundService(c,id,check,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE));
+   if(small)v.setOnClickPendingIntent(R.id.scene_status,PendingIntent.getForegroundService(c,id,run,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE));
   }
   AppWidgetManager.getInstance(c).updateAppWidget(id,v);
  }
