@@ -23,17 +23,18 @@ jobs:
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - run: |
           mkdir -p /tmp/onkyo-tests
-          javac -d /tmp/onkyo-tests app/src/main/java/at/local/dualzone/{Protocol,Receiver,Discovery,Capabilities,Diagnostics}.java tests/*.java
+          javac -d /tmp/onkyo-tests app/src/main/java/at/local/dualzone/{Protocol,Receiver,Discovery,Capabilities,Diagnostics,Scene,SceneExecutor}.java tests/*.java
           java -cp /tmp/onkyo-tests at.local.dualzone.ProtocolTest
           java -cp /tmp/onkyo-tests at.local.dualzone.ReceiverTest
           java -cp /tmp/onkyo-tests at.local.dualzone.DiscoveryTest
           java -cp /tmp/onkyo-tests at.local.dualzone.CapabilitiesTest
           java -cp /tmp/onkyo-tests at.local.dualzone.DiagnosticsTest
           java -cp /tmp/onkyo-tests at.local.dualzone.WireReplayTest
+          java -cp /tmp/onkyo-tests at.local.dualzone.SceneTest
       - run: gradle --no-daemon assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: OnkyoDualZone-v0.4.2-debug
+          name: OnkyoDualZone-v0.5-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
   emulator:
@@ -43,7 +44,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: OnkyoDualZone-v0.4.2-debug
+          name: OnkyoDualZone-v0.5-debug
           path: app/build/outputs/apk/debug
       - name: Enable KVM
         run: |

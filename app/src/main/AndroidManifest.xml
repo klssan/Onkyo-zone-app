@@ -1,8 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 <uses-permission android:name="android.permission.INTERNET"/>
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
 <queries><package android:name="com.google.android.videos"/></queries>
 <application android:label="Onkyo Dual Zone" android:theme="@android:style/Theme.Material.NoActionBar" android:allowBackup="false">
 <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait">
 <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
-</activity></application></manifest>
+</activity>
+<activity android:name=".SceneConfigActivity" android:exported="true"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_CONFIGURE"/></intent-filter></activity>
+<receiver android:name=".SceneWidget" android:exported="false" android:label="Onkyo Szene"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/scene_widget_info"/></receiver>
+<service android:name=".SceneService" android:exported="false" android:foregroundServiceType="shortService"/>
+</application></manifest>

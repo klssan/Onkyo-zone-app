@@ -8,7 +8,7 @@ def nodes():
 def wait_for(name):
     for _ in range(8):
         for n in nodes():
-            if n.get("text")==name or n.get("content-desc")==name:
+            if (n.get("text") or "").casefold()==name.casefold() or (n.get("content-desc") or "").casefold()==name.casefold():
                 return n
         time.sleep(1)
     raise AssertionError("missing "+name)
@@ -23,7 +23,7 @@ adb("shell","am","start","-n","at.local.dualzone/.MainActivity")
 wait_for("Hauptzone")
 wait_for("Nebenzone")
 wait_for("Google TV öffnen")
-if "package:" not in adb("shell","pm","path","com.google.android.videos"):
+if "package:" not in subprocess.run(["adb","shell","pm","path","com.google.android.videos"],capture_output=True,text=True).stdout:
     tap("Google TV öffnen")
     wait_for("Google TV nicht verfügbar")
     tap("Schließen")
@@ -40,4 +40,8 @@ adb("shell","input","keyevent","4")
 tap("Verbindung")
 tap("Diagnosebericht")
 wait_for("TXT exportieren")
-print("Android UI smoke test passed")
+tap("Schließen")
+tap("Verbindung")
+tap("Homescreen-Widgets")
+wait_for("Widget hinzufügen")
+print("Android UI smoke test passed; widget menu reachable")

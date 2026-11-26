@@ -1,6 +1,8 @@
 # Onkyo Dual Zone
 Unofficial local Android controller for TX-NR656.
 
+## v0.5
+Native home-screen scene widgets, one independent configuration per widget. Set power on/off/unchanged, source, volume (0–50), optional FM/AM preset (1–40) or NET service for each zone. Explicit opt-in for shared source effects. User-initiated short foreground service performs fresh LAN discovery, verifies replies, shows success/partial failure/error on widget, never repeats a write automatically. Demo option sends no network commands. Add from Connection > Homescreen-Widgets or Android launcher; configure by tapping unconfigured widget or gear. Existing FM4 preset number must be supplied; no hardcoded frequency. Live device validation still pending. Manual IP scenes require an NRI model match. NET service selection experimental. No native TV power control. Logs remain local and capped.
 ## v0.4.2
 A compact TV button opens the installed Google TV app via its public launcher, with a missing-app dialog. No separate TV volume control or new pairing; direct launch of Google's internal remote screen is not a supported API. The remote is also available via Android Quick Settings.
 
