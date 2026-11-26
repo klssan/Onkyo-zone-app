@@ -79,9 +79,6 @@ public class MainActivity extends Activity {
    LinearLayout sound=section(content,"Klang");
    modeButton=btn("Listening Mode");add(sound,modeButton,-1,48);modeButton.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Listening Mode").setItems(new String[]{"Stereo","Direct","All Channel Stereo","Pure Audio"},(d,i)->send("LMD"+new String[]{"00","01","0C","11"}[i])).show());
    gap(sound,4);audioRow(sound,"Bass","TFRB","TFRBDOWN","TFRBUP");audioRow(sound,"Höhen","TFRT","TFRTDOWN","TFRTUP");audioRow(sound,"Center","CTL","CTLDOWN","CTLUP");audioRow(sound,"Subwoofer","SWL","SWLDOWN","SWLUP");
-  }else{
-   LinearLayout sound=section(content,"Klang");audioRow(sound,"Bass","ZTNB","ZTNBDOWN","ZTNBUP");audioRow(sound,"Höhen","ZTNT","ZTNTDOWN","ZTNTUP");audioRow(sound,"Balance","ZBL","ZBLDOWN","ZBLUP");
-   TextView note=label("Nur vom Receiver bestätigte Funktionen sind aktiv.",12,MUTED);note.setPadding(0,dp(4),0,dp(4));add(sound,note,-1,-2);
   }
   LinearLayout play=section(content,"Radio");
   TextView freq=label("FM-Speicherplätze",14,MUTED);add(play,freq,-1,28);
@@ -96,7 +93,7 @@ public class MainActivity extends Activity {
   minus.setOnClickListener(v->send(down));plus.setOnClickListener(v->send(up));
  }
  void radioPreset(int idx,String direction){Zone z=zones[idx];if(!connected||!Boolean.TRUE.equals(z.power))return;String prefix=idx==0?"PRS":"PRZ";if(idx==1&&z.source.equals("80"))prefix="PRS";send(prefix+direction);}
- void queryDetails(){if(receiver!=null&&connected&&detailIndex>=0){if(detailIndex==0)receiver.send("LMDQSTN","TFRQSTN","CTLQSTN","SWLQSTN");else receiver.send("ZTNQSTN","ZBLQSTN");}}
+ void queryDetails(){if(receiver!=null&&connected&&detailIndex>=0){if(detailIndex==0)receiver.send("LMDQSTN","TFRQSTN","CTLQSTN","SWLQSTN");}}
  String modeName(String code){if(code==null)return "–";switch(code){case "00":return "Stereo";case "01":return "Direct";case "0C":return "All Channel Stereo";case "11":return "Pure Audio";default:return code==null?"–":code;}}
  void renderDetails(){if(detailIndex<0)return;Zone z=zones[detailIndex];boolean on=connected&&Boolean.TRUE.equals(z.power);
   detailStatus.setText(status.getText());detailPower.setText(z.power==null?"–":on?"An":"Aus");detailPower.setEnabled(connected&&z.power!=null);detailSource.setText(sourceName(z.source)+(z.source.equals("2B")&&!service.isEmpty()?" / "+service:""));detailSource.setEnabled(on);
