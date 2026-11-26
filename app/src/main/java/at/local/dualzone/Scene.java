@@ -27,6 +27,16 @@ final class Scene {
   Zone a=zones[0],b=zones[1];if(a.source.equals("24")&&b.source.equals("25")||a.source.equals("25")&&b.source.equals("24"))throw new IllegalArgumentException("Nur ein gemeinsamer FM/AM-Tuner");if(a.preset>=1&&b.preset>=1&&(a.preset!=b.preset||!a.source.equals(b.source)))throw new IllegalArgumentException("Nur ein gemeinsamer Radiosender");
   if(!a.service.isEmpty()&&!b.service.isEmpty()&&!a.service.equals(b.service))throw new IllegalArgumentException("Nur ein gemeinsamer NET-Dienst");
  }
+ // Only an explicit single-zone radio ON scene is a toggle.
+ int radioToggleZone(){
+  for(int i=0;i<2;i++){Zone z=zones[i];if(z.power==ON&&(z.source.equals("24")||z.source.equals("25"))&&!zones[1-i].changes())return i;}return -1;
+ }
+ String compactSummary(){
+  ArrayList<String> parts=new ArrayList<>();
+  for(int i=0;i<2;i++){Zone z=zones[i];if(!z.changes())continue;
+   String s=(i==0?"H":"Z2");if(z.power==OFF)s+=" AUS";else if(!z.source.isEmpty()){String n=SOURCE_NAMES[Arrays.asList(SOURCE_CODES).indexOf(z.source)];if(z.source.equals("2B")&&!z.service.isEmpty())n=NET_NAMES[Arrays.asList(NET_CODES).indexOf(z.service)];s+=" "+n+(z.preset>0?z.preset:"");}else if(z.power==ON)s+=" AN";if(z.volume>=0)s+=" · "+z.volume;parts.add(s);}
+  return String.join("\n",parts);
+ }
  String zoneSummary(int i){
   Zone z=zones[i];if(!z.changes())return "Unverändert";
   ArrayList<String> parts=new ArrayList<>();

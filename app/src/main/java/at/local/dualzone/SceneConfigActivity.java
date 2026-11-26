@@ -33,7 +33,7 @@ public final class SceneConfigActivity extends Activity {
  }
  @Override public void onCreate(Bundle b){super.onCreate(b);id=getIntent().getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,AppWidgetManager.INVALID_APPWIDGET_ID);Intent result=new Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id);setResult(RESULT_CANCELED,result);if(!SceneWidget.owns(this,id)){finish();return;}
   Scene old=SceneStore.get(this,id);ScrollView scroll=new ScrollView(this);root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(18),dp(12),dp(18),dp(16));scroll.addView(root);setContentView(scroll);
-  text(root,"Onkyo-Szene",26);text(root,"Ein Tippen startet die gewählten Aktionen. Unveränderte Einstellungen werden nicht gesetzt.",15);
+  ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.dz_logo);logo.setContentDescription("DualZone Remote");root.addView(logo,new LinearLayout.LayoutParams(dp(48),dp(48)));text(root,"DualZone Remote · Szene",26);text(root,"Ein Tippen startet die gewählten Aktionen. Radio mit Einschalten in genau einer Zone: erneut tippen schaltet diese Zone aus, wenn Quelle und ggf. Speicherplatz übereinstimmen.",15);
   text(root,"Name",14);name=input(root,"z. B. FM4 Küche",old==null?"":old.name,false);name.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(40)});
   text(root,"Symbol",14);icon=spin(root,icons,old==null?0:Arrays.asList(icons).indexOf(old.icon));
   Scene.Zone empty=new Scene.Zone(Scene.KEEP,"",-1,-1,"");

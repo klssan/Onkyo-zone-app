@@ -28,6 +28,25 @@ final class WidgetStatus {
   int color=fresh?(code.equals(REACHABLE)?GOOD:WARN):NEUTRAL;
   return new Line("Check "+when(at)+": "+label,color);
  }
+ static Line compact(Line connection,Line execution){
+  String c=connection.text,e=execution.text;
+  if(c.equals("Kein WLAN/LAN"))return new Line("Offline",ERROR);
+  if(c.startsWith("Demo"))return new Line("Demo",NEUTRAL);
+  if(c.contains("…"))return new Line("…",NEUTRAL);
+  if(c.contains("nicht gefunden")||c.contains("nicht erreichbar"))return new Line("Onkyo offline",WARN);
+  if(c.contains("keine Statusantwort")||c.contains("fehlgeschlagen")||c.contains("falsches Gerät")||c.contains("unklar"))return new Line("Fehler",WARN);
+  if(c.contains("auswählen"))return new Line("Gerät wählen",WARN);
+  if(e.contains("Teilweise"))return new Line("Teilweise",WARN);
+  if(e.contains("nicht bestätigt")||e.contains("Nicht bestätigt")||e.contains("Nicht ausgeführt")||e.contains("Zeitlimit"))return new Line("Fehler",WARN);
+  if(c.startsWith("Onkyo ungeprüft"))return new Line("Prüfen",NEUTRAL);
+  if(e.contains("Bestätigt · An")||e.contains("Bestätigt · Aus")){
+   String time=e.matches("Lauf [0-9]{2}\\.[0-9]{2}\\. [0-9]{2}:[0-9]{2}:.*")?e.substring(12,17):"";
+   // Last confirmed action, never a live claim; always include time if available.
+   return new Line((e.contains("Bestätigt · An")?"An ":"Aus ")+time,connection.tone==GOOD?GOOD:NEUTRAL);
+  }
+  if(e.contains("Bestätigt"))return new Line("OK · letzter Lauf",connection.tone==GOOD?GOOD:NEUTRAL);
+  return new Line("Bereit",NEUTRAL);
+ }
  static Line execution(String message,long at,boolean pending,long pendingAt,boolean running){
   if(pending&&!running)return new Line("Versuch "+when(pendingAt)+": nicht bestätigt",WARN);
   if(message==null||message.isEmpty()||at<=0)return new Line("Noch kein Ausführungsergebnis",NEUTRAL);

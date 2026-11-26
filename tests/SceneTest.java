@@ -16,6 +16,13 @@ public class SceneTest {
  public static void main(String[] args)throws Exception{
   Scene scene=new Scene("FM4 Küche","Radio",keep(),fm(),false,false);Fake f=new Fake();
   check(SceneExecutor.execute(scene,f)==4);check(f.writes.equals(Arrays.asList("ZPW01","ZVL28","SLZ24","PRZ04")));check(f.state.get("PWR").equals("01"));
+  Fake radio=new Fake();radio.state.put("ZPW","01");radio.state.put("SLZ","24");radio.state.put("PRZ","04");
+  check(scene.radioToggleZone()==1&&SceneExecutor.toggleRadioOff(scene,radio));check(radio.writes.equals(Arrays.asList("ZPW00"))&&radio.state.get("PWR").equals("01"));
+  radio.writes.clear();check(!SceneExecutor.toggleRadioOff(scene,radio)&&radio.writes.isEmpty());
+  radio.state.put("ZPW","01");radio.state.put("PRZ","05");check(!SceneExecutor.toggleRadioOff(scene,radio)&&radio.writes.isEmpty());
+  radio.state.put("PRZ","N/A");try{SceneExecutor.toggleRadioOff(scene,radio);throw new AssertionError("unknown preset");}catch(IOException ok){check(radio.writes.isEmpty());}
+  radio.state.put("SLZ","12");check(!SceneExecutor.toggleRadioOff(scene,radio)&&radio.writes.isEmpty());
+  check(scene.compactSummary().equals("Z2 FM4 · 40"));
   Fake shared=new Fake();shared.state.put("SLI","24");try{SceneExecutor.execute(scene,shared);throw new AssertionError("shared FM");}catch(SceneExecutor.SceneException e){check(e.confirmed==0&&shared.writes.isEmpty());}
   Scene allowed=new Scene("FM4","Radio",keep(),fm(),true,false);check(SceneExecutor.execute(allowed,shared)==4);
   Fake partial=new Fake();partial.fail="SLZ";try{SceneExecutor.execute(scene,partial);throw new AssertionError();}catch(SceneExecutor.SceneException e){check(e.confirmed==2&&partial.writes.size()==3);}

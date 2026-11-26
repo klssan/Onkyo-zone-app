@@ -1,6 +1,8 @@
-# Onkyo Dual Zone
+# DualZone Remote
 Unofficial local Android controller for TX-NR656.
 
+## v0.6
+Compact 1×1 scene widgets (actual minimum determined by Android launcher), with a larger layout when resized. Explicit single-zone radio ON scenes toggle off only if the real receiver confirms matching power, source and configured preset. Other scenes remain one-way. No cached state is used for deciding what to switch off. Last confirmed action has a timestamp, not a guaranteed live status. Logo uses a simplified vector rendition of the receiver-and-two-zones concept in the launcher, dashboard, configuration and compact widgets; monochrome notification icon.
 ## v0.5.2
 Fix volume controls locking above 50. Use per-zone NRI volume limits and step scale, support two- and three-digit ISCP volume replies, and keep requested values visible until a reply or timeout. Without a positive NRI maximum, use the protocol range (100 whole units), never assume zero means a usable maximum. Volume unavailable is reported separately. The receiver's hardware maximum remains authoritative. Widget scene volumes use whole units and respect reported maxima at execution. Live volume confirmation still pending. Detail panels now follow the effective selected source: FM/AM shows tuner preset controls (receiver-reported names/frequencies when available), NET shows only the NET service selector, other sources hide both; SOURCE follows the main zone. Shared media changes require confirmation.
 ## v0.5.1

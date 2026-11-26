@@ -7,6 +7,18 @@ final class SceneExecutor {
  interface Wire {String query(String prefix)throws IOException;void set(String command,String expectedPrefix,String expectedValue)throws IOException;}
  static final class SceneException extends IOException{final int confirmed;SceneException(String text,int confirmed){super(text);this.confirmed=confirmed;}}
  static void checkReceiver(Wire wire)throws IOException{String power=wire.query("PWR");if(!power.equals("00")&&!power.equals("01"))throw new IOException("Keine gültige Statusantwort");}
+ // Read the actual power, source and preset, never a cached widget flag.
+ static boolean toggleRadioOff(Scene scene,Wire wire)throws IOException{
+  int i=scene.radioToggleZone();if(i<0)return false;
+  Scene.Zone z=scene.zones[i];String pp=i==0?"PWR":"ZPW",sp=i==0?"SLI":"SLZ",rp=i==0?"PRS":"PRZ";
+  String power=wire.query(pp);
+  if(power.equals("00"))return false;
+  if(!power.equals("01"))throw new IOException("Zonenstatus unbekannt");
+  String source=wire.query(sp);if(!source.matches("[0-9A-Fa-f]{2}"))throw new IOException("Quelle unbekannt");
+  if(!source.equalsIgnoreCase(z.source))return false;
+  if(z.preset>0){String preset=wire.query(rp);if(!preset.matches("[0-9A-Fa-f]{2}"))throw new IOException("Radiospeicherplatz unbekannt");if(Integer.parseInt(preset,16)!=z.preset)return false;}
+  wire.set(pp+"00",pp,"00");return true;
+ }
  static int execute(Scene scene,Wire wire)throws IOException{return execute(scene,wire,null);}
  static int execute(Scene scene,Wire wire,Capabilities profile)throws IOException{
   scene.validate();String[] power=new String[2],source=new String[2];int confirmed=0;

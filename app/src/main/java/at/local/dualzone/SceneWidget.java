@@ -53,10 +53,22 @@ public final class SceneWidget extends AppWidgetProvider {
   v.setTextViewText(R.id.scene_icon,symbol);
   return v;
  }
+ static RemoteViews compact(Context c,Scene scene,WidgetStatus.Line connection,WidgetStatus.Line execution){
+  RemoteViews v=new RemoteViews(c.getPackageName(),R.layout.scene_widget_small);
+  v.setTextViewText(R.id.scene_name,scene==null?"Einrichten":scene.name);
+  v.setTextViewText(R.id.scene_actions_text,scene==null?"":scene.compactSummary());
+  WidgetStatus.Line state=WidgetStatus.compact(connection,execution);
+  v.setTextViewText(R.id.scene_status,scene==null?"":state.text);
+  v.setTextColor(R.id.scene_status,color(state.tone));
+  v.setContentDescription(R.id.scene_run,scene==null?"DualZone Szene einrichten":scene.name+". "+scene.summary()+". "+connection.text+". "+execution.text);
+  v.setViewVisibility(R.id.scene_check,scene==null?View.GONE:View.VISIBLE);
+  return v;
+ }
  static void refresh(Context c,int id){
   if(!owns(c,id))return;Scene scene=SceneStore.get(c,id);Network n=lan(c);String phase=phases.get(id);
   WidgetStatus.Line connection=SceneStore.connection(c,scene!=null&&scene.demo,n==null?0:n.getNetworkHandle(),phase),execution=SceneStore.execution(c,id,phase!=null);
-  RemoteViews v=render(c,scene,connection,execution);
+  Bundle options=AppWidgetManager.getInstance(c).getAppWidgetOptions(id);boolean small=options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,60)<240||options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,60)<180;
+  RemoteViews v=small?compact(c,scene,connection,execution):render(c,scene,connection,execution);
   Intent edit=new Intent(c,SceneConfigActivity.class).setAction(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).setData(Uri.parse("onkyo://edit/"+id)).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
   PendingIntent editPI=PendingIntent.getActivity(c,id,edit,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
   v.setOnClickPendingIntent(R.id.scene_edit,editPI);

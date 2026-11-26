@@ -18,7 +18,7 @@ public final class SceneService extends Service {
   String action=i==null?"":i.getAction();boolean checkOnly=SceneWidget.CHECK.equals(action);
   if(!running){
    NotificationManager nm=getSystemService(NotificationManager.class);nm.createNotificationChannel(new NotificationChannel(CHANNEL,"Onkyo-Szenen",NotificationManager.IMPORTANCE_LOW));
-   Notification n=new Notification.Builder(this,CHANNEL).setSmallIcon(android.R.drawable.ic_media_play).setContentTitle(checkOnly?"Onkyo-Verbindung prüfen":"Onkyo-Szene").setContentText(checkOnly?"Status wird abgefragt":"Receiver wird gesteuert").setOngoing(true).build();
+   Notification n=new Notification.Builder(this,CHANNEL).setSmallIcon(R.drawable.dz_notification).setContentTitle(checkOnly?"Onkyo-Verbindung prüfen":"Onkyo-Szene").setContentText(checkOnly?"Status wird abgefragt":"Receiver wird gesteuert").setOngoing(true).build();
    if(Build.VERSION.SDK_INT>=34)startForeground(520,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE);else startForeground(520,n);
   }
   if(!SceneWidget.owns(this,id)||!checkOnly&&!SceneWidget.RUN.equals(action)){if(!running)stopSelf();return START_NOT_STICKY;}
@@ -33,7 +33,7 @@ public final class SceneService extends Service {
    String result;
    try{
     if(scene.demo){scene.validate();Diagnostics.event("WIDGET","demo; no network commands");result="Demo · keine Befehle";}
-    else{int count=runScene(scene,checkOnly,job,id);Diagnostics.event("WIDGET","observed actions="+count);result="Bestätigt";}
+    else{int count=runScene(scene,checkOnly,job,id);Diagnostics.event("WIDGET","observed actions="+count);result=count==-1?"Bestätigt · Aus":scene.radioToggleZone()>=0?"Bestätigt · An":"Bestätigt";}
    }catch(SceneExecutor.SceneException e){
     Diagnostics.event("WIDGET","not confirmed; observed actions="+e.confirmed);
     result=(e.confirmed>0?"Teilweise ("+e.confirmed+")":"Nicht bestätigt")+" · "+safeSceneError(e.getMessage());
@@ -51,7 +51,7 @@ public final class SceneService extends Service {
  static String safeSceneError(String message){
   if(message==null)return "Receiver antwortet nicht";
   if(message.matches("(Status fehlt|Nicht bestätigt|Nicht verfügbar): [A-Z0-9]{3}"))return message;
-  if(Arrays.asList("Zonenstatus unbekannt","Zone ausgeschaltet","Quelle unbekannt","SOURCE folgt Hauptzone","Gemeinsame Medienquelle","Gemeinsamer FM/AM-Tuner","Lautstärke über Geräte-Maximum").contains(message))return message;
+  if(Arrays.asList("Zonenstatus unbekannt","Zone ausgeschaltet","Quelle unbekannt","SOURCE folgt Hauptzone","Gemeinsame Medienquelle","Gemeinsamer FM/AM-Tuner","Lautstärke über Geräte-Maximum","Radiospeicherplatz unbekannt").contains(message))return message;
   return "Receiver antwortet nicht";
  }
  void phase(int job,int id,String value){main.post(()->{if(running&&token==job&&activeId==id)SceneWidget.phase(this,id,value);});}
@@ -90,6 +90,7 @@ public final class SceneService extends Service {
      SceneExecutor.checkReceiver(wire);probe(job,WidgetStatus.REACHABLE,handle,target);
      if(checkOnly)return 0; // Read-only check: no source, volume or power writes.
      if(!target.equals(SceneStore.target(this)))throw new LocalFailure("Receiver-Auswahl geändert",null);
+     if(scene.radioToggleZone()>=0){phase(job,id,"Radio wird geprüft …");try{if(SceneExecutor.toggleRadioOff(scene,wire)){probe(job,WidgetStatus.REACHABLE,handle,target);return -1;}}catch(IOException e){throw new SceneExecutor.SceneException(e.getMessage(),0);}}
      if(profile!=null)for(int z=0;z<2;z++){Scene.Zone setting=scene.zones[z];
       if(profile.hasSelectors&&!setting.source.isEmpty()&&!profile.sources(z).containsKey(setting.source))throw new LocalFailure("Quelle nicht unterstützt",null);
       if(profile.hasServices&&!setting.service.isEmpty()&&!profile.services(z).containsKey(setting.service))throw new LocalFailure("NET-Dienst nicht unterstützt",null);

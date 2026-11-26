@@ -26,6 +26,11 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
    float d=c.getResources().getDisplayMetrics().density;int width=Math.round(300*d),height=Math.round(200*d);
    v.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(height,View.MeasureSpec.EXACTLY));v.layout(0,0,width,height);
    for(int id:new int[]{R.id.scene_name,R.id.scene_main,R.id.scene_second,R.id.scene_connection,R.id.scene_status}){View item=v.findViewById(id);require(item.getHeight()>0&&item.getWidth()>0,"clipped widget row "+id);}
+   View small=SceneWidget.compact(c,scene,WidgetStatus.connection(false,false,WidgetStatus.REACHABLE,now,true,now,null),last).apply(c,new FrameLayout(c));
+   require(value(small,R.id.scene_actions_text).equals("Z2 FM4 · 40"),"compact action");
+   require(value(small,R.id.scene_status).equals("Offline"),"compact offline");
+   small.measure(View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY));small.layout(0,0,Math.round(64*d),Math.round(64*d));
+   require(small.findViewById(R.id.scene_actions_text).getHeight()>0,"compact action height");
    RemoteViews reachable=SceneWidget.render(c,scene,WidgetStatus.connection(false,true,WidgetStatus.REACHABLE,now,true,now,null),WidgetStatus.execution("Teilweise (2)",now,false,0,false));
    View other=reachable.apply(c,new FrameLayout(c));require(value(other,R.id.scene_connection).contains("erreichbar")&&value(other,R.id.scene_status).contains("Teilweise"),"separate result");
   }catch(Throwable e){problem[0]=e;}});
