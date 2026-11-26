@@ -1,10 +1,28 @@
 #!/usr/bin/env python3
 import subprocess,time,xml.etree.ElementTree as ET
 def adb(*args):
-    return subprocess.check_output(["adb",*args],text=True)
+    return subprocess.check_output(["adb",*args],text=True,timeout=45)
 def nodes():
-    adb("shell","uiautomator","dump","/sdcard/onkyo-ui.xml")
-    return list(ET.fromstring(adb("shell","cat","/sdcard/onkyo-ui.xml")).iter("node"))
+    # A freshly booted emulator may briefly have no accessibility root.
+    # Never reuse an old dump or treat a missing tree as an empty successful result.
+    path="/sdcard/onkyo-ui.xml"
+    last=None
+    for attempt in range(6):
+        try:
+            adb("shell","rm","-f",path)
+            output=adb("shell","uiautomator","dump",path)
+            if "ERROR" in output:
+                raise RuntimeError(output.strip())
+            root=ET.fromstring(adb("shell","cat",path))
+            result=list(root.iter("node"))
+            if not result:
+                raise RuntimeError("UI dump contains no nodes")
+            return result
+        except (subprocess.CalledProcessError,subprocess.TimeoutExpired,ET.ParseError,RuntimeError) as error:
+            last=error
+            print("UI dump retry",attempt+1,str(error),flush=True)
+            time.sleep(2)
+    raise AssertionError("Unable to obtain fresh UI tree") from last
 def wait_for(name):
     for _ in range(8):
         for n in nodes():
@@ -19,7 +37,10 @@ def tap(name):
     adb("shell","input","tap",str((x+X)//2),str((y+Y)//2))
     time.sleep(0.5)
 adb("install","-r","app/build/outputs/apk/debug/app-debug.apk")
-adb("shell","am","start","-n","at.local.dualzone/.MainActivity")
+adb("shell","input","keyevent","KEYCODE_WAKEUP")
+adb("shell","wm","dismiss-keyguard")
+print(adb("shell","am","start","-W","-n","at.local.dualzone/.MainActivity"),flush=True)
+time.sleep(2)
 wait_for("Hauptzone")
 wait_for("Nebenzone")
 wait_for("Google TV öffnen")

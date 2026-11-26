@@ -68,4 +68,12 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: python3 tests/ui_smoke.py && python3 tests/widget_render.py
+          script: |
+            smoke=0
+            widget=0
+            python3 tests/ui_smoke.py || smoke=$?
+            python3 tests/widget_render.py || widget=$?
+            if [ "$smoke" -ne 0 ] || [ "$widget" -ne 0 ]; then
+              adb logcat -d -t 400 -s AndroidRuntime ActivityTaskManager || true
+              exit 1
+            fi
