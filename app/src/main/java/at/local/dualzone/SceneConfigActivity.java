@@ -42,8 +42,9 @@ public final class SceneConfigActivity extends Activity {
   demo=new CheckBox(this);demo.setText("Nur Demo (keine Receiver-Befehle)");demo.setChecked(old!=null&&old.demo);root.addView(demo);
   text(root,"Radio: FM4 muss am Receiver auf dem gewählten Speicherplatz gespeichert sein. NET-Dienste sind abhängig von Firmware und Verfügbarkeit. Netzwerk-Standby aktivieren.",13);
   Button save=new Button(this);save.setText("Widget speichern");root.addView(save,new LinearLayout.LayoutParams(-1,dp(52)));save.setOnClickListener(v->{try{
+   if(SceneWidget.busy(id))throw new IllegalStateException("Bitte laufende Aktion abschließen lassen");
    Scene scene=new Scene(name.getText().toString().trim(),icons[icon.getSelectedItemPosition()],forms[0].value(),forms[1].value(),shared.isChecked(),demo.isChecked());
-   if(!SceneStore.save(this,id,scene))throw new IllegalStateException("Speichern fehlgeschlagen");SceneWidget.refresh(this,id,"Bereit");setResult(RESULT_OK,result);finish();
+   if(!SceneStore.save(this,id,scene))throw new IllegalStateException("Speichern fehlgeschlagen");SceneWidget.observeNetwork(this);SceneWidget.refresh(this,id);setResult(RESULT_OK,result);finish();
   }catch(IllegalArgumentException|IllegalStateException e){new AlertDialog.Builder(this).setTitle("Szene prüfen").setMessage(e instanceof NumberFormatException?"Bitte gültige Zahlen eingeben.":e.getMessage()).setPositiveButton("OK",null).show();}});
  }
 }

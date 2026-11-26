@@ -6,6 +6,7 @@ import java.util.*;
 final class SceneExecutor {
  interface Wire {String query(String prefix)throws IOException;void set(String command,String expectedPrefix,String expectedValue)throws IOException;}
  static final class SceneException extends IOException{final int confirmed;SceneException(String text,int confirmed){super(text);this.confirmed=confirmed;}}
+ static void checkReceiver(Wire wire)throws IOException{String power=wire.query("PWR");if(!power.equals("00")&&!power.equals("01"))throw new IOException("Keine gültige Statusantwort");}
  static int execute(Scene scene,Wire wire)throws IOException{
   scene.validate();String[] power=new String[2],source=new String[2];int confirmed=0;
   try{

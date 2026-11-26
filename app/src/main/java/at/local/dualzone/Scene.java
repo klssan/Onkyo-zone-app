@@ -27,5 +27,13 @@ final class Scene {
   Zone a=zones[0],b=zones[1];if(a.source.equals("24")&&b.source.equals("25")||a.source.equals("25")&&b.source.equals("24"))throw new IllegalArgumentException("Nur ein gemeinsamer FM/AM-Tuner");if(a.preset>=1&&b.preset>=1&&(a.preset!=b.preset||!a.source.equals(b.source)))throw new IllegalArgumentException("Nur ein gemeinsamer Radiosender");
   if(!a.service.isEmpty()&&!b.service.isEmpty()&&!a.service.equals(b.service))throw new IllegalArgumentException("Nur ein gemeinsamer NET-Dienst");
  }
- String summary(){ArrayList<String> items=new ArrayList<>();for(int i=0;i<2;i++){Zone z=zones[i];if(!z.changes())continue;String x=i==0?"Haupt":"Zone 2";if(z.power==ON)x+=" · An";if(z.power==OFF)x+=" · Aus";if(!z.source.isEmpty())x+=" · "+SOURCE_NAMES[Arrays.asList(SOURCE_CODES).indexOf(z.source)];if(z.preset>0)x+=" "+z.preset;if(!z.service.isEmpty())x+=" · "+NET_NAMES[Arrays.asList(NET_CODES).indexOf(z.service)];if(z.volume>=0)x+=" · "+z.volume;items.add(x);}return String.join(" / ",items);}
+ String zoneSummary(int i){
+  Zone z=zones[i];if(!z.changes())return "Unverändert";
+  ArrayList<String> parts=new ArrayList<>();
+  if(z.power==ON)parts.add("An");else if(z.power==OFF)parts.add("Aus");
+  if(!z.source.isEmpty()){String source=SOURCE_NAMES[Arrays.asList(SOURCE_CODES).indexOf(z.source)];if(z.preset>0)source+=String.format(Locale.ROOT," P%02d",z.preset);if(!z.service.isEmpty())source+=" / "+NET_NAMES[Arrays.asList(NET_CODES).indexOf(z.service)];parts.add(source);}
+  if(z.volume>=0)parts.add("Vol. "+z.volume);
+  return String.join(" · ",parts);
+ }
+ String summary(){return "Haupt: "+zoneSummary(0)+" / Zone 2: "+zoneSummary(1);}
 }
