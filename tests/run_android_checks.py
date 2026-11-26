@@ -1,5 +1,8 @@
 import subprocess,sys
 results=[]
+from pathlib import Path
+if Path('previous/previous.apk').is_file():
+    subprocess.run([sys.executable,'tests/upgrade_check.py'],check=True)
 for test in ("tests/ui_smoke.py","tests/widget_render.py"):
     results.append(subprocess.run([sys.executable,test]).returncode)
 if any(results):

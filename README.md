@@ -1,6 +1,9 @@
 # Onkyo dahoam
 Unofficial local Android controller for TX-NR656.
 
+## v0.7.3
+Permanent signing baseline. CI requires the encrypted repository secret ONKYO_KEYSTORE_B64; see [SIGNING.md](SIGNING.md). Subsequent releases require a matching certificate, increasing versionCode and an emulator in-place upgrade that preserves app data. One final uninstall may be required to migrate from v0.7.2 or earlier.
+
 ## v0.7.2
 Compact, top-aligned scrollable zone cards, full-width sliders with numeric readout, consistent source and playback control spacing. No per-zone +/- buttons in dashboard or widget slider dialogs. The shared relative +/- controls remain in a separate fixed bottom row only when Esstisch follows SOURCE, enabled only when both zones support volume. No change to connection or playback protocol.
 

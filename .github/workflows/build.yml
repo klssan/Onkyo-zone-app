@@ -1,12 +1,20 @@
 name: Build debug APK
 on:
   push:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: onkyo-dahoam-release
+  cancel-in-progress: false
 jobs:
   apk:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    outputs:
+      previous: ${{ steps.verify.outputs.previous }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -33,34 +41,74 @@ jobs:
           java -cp /tmp/onkyo-tests at.local.dualzone.SceneTest
           java -cp /tmp/onkyo-tests at.local.dualzone.WidgetStatusTest
           java -cp /tmp/onkyo-tests at.local.dualzone.VolumeTest
+      - name: Restore permanent signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ONKYO_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Configure ONKYO_KEYSTORE_B64 before publishing. See SIGNING.md."
+            exit 1
+          fi
+          umask 077
+          mkdir -p "$HOME/.android"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey >/dev/null
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(sed -nE "s/.*versionName '([0-9]+\.[0-9]+\.[0-9]+)'.*/\1/p" app/build.gradle)
+          CODE=$(sed -nE "s/.*versionCode ([0-9]+).*/\1/p" app/build.gradle)
+          test -n "$VERSION" && test -n "$CODE"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
       - run: gradle --no-daemon assembleDebug assembleDebugAndroidTest
-      - name: Verify APK identity and signature
+      - name: Verify identity, version and upgrade signature
+        id: verify
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.version.outputs.version }}
+          CODE: ${{ steps.version.outputs.code }}
         run: |
           APK=app/build/outputs/apk/debug/app-debug.apk
           TOOLS="$ANDROID_HOME/build-tools/35.0.0"
           "$TOOLS/aapt" dump badging "$APK" > /tmp/apk-info.txt
-          cat /tmp/apk-info.txt
-          grep -F "package: name='at.local.dualzone' versionCode='14' versionName='0.7.2'" /tmp/apk-info.txt
+          grep -F "package: name='at.local.dualzone' versionCode='$CODE' versionName='$VERSION'" /tmp/apk-info.txt
           grep -F "application-label:'Onkyo dahoam'" /tmp/apk-info.txt
-          "$TOOLS/apksigner" verify --verbose --print-certs "$APK" | tee /tmp/new-cert.txt
-          gh api repos/${{ github.repository }}/actions/artifacts/15144810897/zip > /tmp/old.zip
-          unzip -p /tmp/old.zip app-debug.apk > /tmp/old.apk
-          "$TOOLS/apksigner" verify --print-certs /tmp/old.apk | tee /tmp/old-cert.txt
-          if diff <(grep 'certificate SHA-256 digest:' /tmp/new-cert.txt) <(grep 'certificate SHA-256 digest:' /tmp/old-cert.txt); then
-            echo "Previous v0.5.1 certificate matches"
+          "$TOOLS/apksigner" verify --verbose --print-certs "$APK" > /tmp/new-cert.txt
+          grep 'certificate SHA-256 digest:' /tmp/new-cert.txt
+          TAGS=$(gh release list --exclude-drafts --exclude-pre-releases --limit 100 --json tagName --jq '.[].tagName')
+          PREVIOUS=$(printf '%s\n' "$TAGS" | python3 -c 'import sys,re; v=lambda s: tuple(map(int,s.removeprefix("v").split("."))); current=v(sys.argv[1]); tags=[s.strip() for s in sys.stdin if re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+",s.strip())]; print(max((s for s in tags if (0,7,3)<=v(s)<current),key=v,default=""))' "$VERSION")
+          if [ -z "$PREVIOUS" ]; then
+            test "$VERSION" = "0.7.3" || { echo "::error::No permanently signed baseline release found"; exit 1; }
+            echo "previous=false" >> "$GITHUB_OUTPUT"
+            echo "First permanent-signing release; one-time migration from old debug APKs."
           else
-            echo "Previous v0.5.1 certificate differs; uninstall older app before installing."
+            mkdir -p previous
+            gh release download "$PREVIOUS" --pattern '*.apk' --output previous/previous.apk
+            "$TOOLS/apksigner" verify --print-certs previous/previous.apk > /tmp/old-cert.txt
+            diff <(grep 'certificate SHA-256 digest:' /tmp/new-cert.txt) <(grep 'certificate SHA-256 digest:' /tmp/old-cert.txt)
+            "$TOOLS/aapt" dump badging previous/previous.apk > /tmp/old-info.txt
+            OLD_CODE=$(sed -nE "s/^package: .*versionCode='([0-9]+)'.*/\1/p" /tmp/old-info.txt)
+            grep -F "package: name='at.local.dualzone'" /tmp/old-info.txt
+            test "$CODE" -gt "$OLD_CODE"
+            echo "previous=true" >> "$GITHUB_OUTPUT"
           fi
+      - name: Upload previous release for upgrade test
+        if: steps.verify.outputs.previous == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: previous-signed-apk
+          path: previous/previous.apk
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
-          name: Onkyo-dahoam-v0.7.2-debug
+          name: onkyo-dahoam-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
-          name: Onkyo-dahoam-v0.7.2-ui-test
+          name: onkyo-dahoam-ui-test
           path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           if-no-files-found: error
   emulator:
@@ -70,12 +118,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: Onkyo-dahoam-v0.7.2-debug
+          name: onkyo-dahoam-debug
           path: app/build/outputs/apk/debug
       - uses: actions/download-artifact@v4
         with:
-          name: Onkyo-dahoam-v0.7.2-ui-test
+          name: onkyo-dahoam-ui-test
           path: app/build/outputs/apk/androidTest/debug
+      - uses: actions/download-artifact@v4
+        if: needs.apk.outputs.previous == 'true'
+        with:
+          name: previous-signed-apk
+          path: previous
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -97,12 +150,17 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: Onkyo-dahoam-v0.7.2-debug
+          name: onkyo-dahoam-debug
           path: release
       - name: Publish tested APK
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.apk.outputs.version }}
         run: |
-          mv release/app-debug.apk release/Onkyo-dahoam-v0.7.2.apk
-          gh release create v0.7.2 release/Onkyo-dahoam-v0.7.2.apk --target "${{ github.sha }}" --title "Onkyo dahoam 0.7.2" --notes "Automated JVM, APK identity/signature and Android emulator checks passed. Debug signing may differ from previous versions: uninstall the old app once before installing. Real receiver volume and launcher behavior still require device testing."
+          mv release/app-debug.apk "release/Onkyo-dahoam-v$VERSION.apk"
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Version already published; increment versionCode and versionName"
+            exit 1
+          fi
+          gh release create "v$VERSION" "release/Onkyo-dahoam-v$VERSION.apk" --target "${{ github.sha }}" --title "Onkyo dahoam $VERSION" --notes "Permanent signing key. Automated JVM, APK identity/signature and Android emulator checks passed; upgrades from the previous permanently signed release tested where available. Version 0.7.3 is the migration baseline; earlier debug builds may require one final uninstall. Real receiver behavior still requires hardware testing."
