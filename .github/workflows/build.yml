@@ -1,11 +1,6 @@
 name: Build debug APK
 on:
   push:
-    paths:
-      - 'app/**'
-      - 'tests/**'
-      - '*.gradle'
-      - '.github/workflows/build.yml'
   workflow_dispatch:
 permissions:
   contents: read
