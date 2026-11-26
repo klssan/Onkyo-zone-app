@@ -23,13 +23,14 @@ jobs:
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - run: |
           mkdir -p /tmp/onkyo-tests
-          javac -d /tmp/onkyo-tests app/src/main/java/at/local/dualzone/{Protocol,Receiver,Discovery}.java tests/*.java
+          javac -d /tmp/onkyo-tests app/src/main/java/at/local/dualzone/{Protocol,Receiver,Discovery,Capabilities}.java tests/*.java
           java -cp /tmp/onkyo-tests at.local.dualzone.ProtocolTest
           java -cp /tmp/onkyo-tests at.local.dualzone.ReceiverTest
           java -cp /tmp/onkyo-tests at.local.dualzone.DiscoveryTest
+          java -cp /tmp/onkyo-tests at.local.dualzone.CapabilitiesTest
       - run: gradle --no-daemon assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: OnkyoDualZone-v0.2-debug
+          name: OnkyoDualZone-v0.3-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
