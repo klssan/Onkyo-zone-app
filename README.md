@@ -1,6 +1,11 @@
 # Onkyo Dual Zone
 Unofficial local Android controller for the Onkyo TX-NR656.
 
-First device-test build: compact two-zone dashboard, demo, manual local IP, Wi-Fi checks, retry, state polling, experimental NET selection and linked volume. Safety cap 50. Enable network standby and variable Zone 2 volume on receiver. Automatic discovery, full details, scenes and widgets are future work. Real receiver compatibility not yet verified.
+## v0.2
+- Automatic eISCP UDP discovery over Wi-Fi/Ethernet, manual IP fallback, reconnect with rediscovery, receiver identity preference.
+- Full-screen zone detail pages with basic controls, listening mode (main), tone / levels, and FM preset navigation. Unsupported sound settings remain disabled until confirmed by the receiver.
+- Demo mode in the connection menu. No Internet required. Test volume cap 50.
+- Real hardware validation pending. Network Standby must be enabled; variable Zone 2 volume is required for volume control. Broadcasts may be blocked by guest Wi-Fi or subnet isolation.
+- Scenes, widgets, richer media browsing and persistent APK signing still pending.
 
-Download OnkyoDualZone-debug from a successful Actions run. Debug signing may require uninstalling an earlier build before installing a new one.
+APK from GitHub Actions artifacts. Debug signing may require uninstalling previous builds.

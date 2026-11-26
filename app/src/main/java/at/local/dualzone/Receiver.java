@@ -8,10 +8,11 @@ final class Receiver implements AutoCloseable {
  private final ExecutorService writer=Executors.newSingleThreadExecutor();
  private volatile Socket socket;
  private volatile boolean closed;
- Receiver(String ip, Listener l){
+ Receiver(String ip, Listener l){this(ip,javax.net.SocketFactory.getDefault(),l);}
+ Receiver(String ip,javax.net.SocketFactory factory,Listener l){
   listener=l;
   new Thread(()->{
-   try(Socket s=new Socket()){
+   try(Socket s=factory.createSocket()){
     socket=s;if(closed)return;
     s.connect(new InetSocketAddress(ip,60128),3000);s.setTcpNoDelay(true);s.setSoTimeout(15000);
     if(closed)return;
