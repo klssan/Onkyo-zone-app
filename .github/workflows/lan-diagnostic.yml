@@ -43,12 +43,24 @@ jobs:
               assert not any(n.startswith('lib/') for n in z.namelist()), 'Unexpected native library'
               assert not any(b'com/wireguard' in z.read(n) for n in z.namelist() if n.endswith('.dex')), 'Unexpected WireGuard code'
           PY
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: python3 tests/ui_smoke.py
       - name: Publish temporary diagnostic APK
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          TAG="v0.8.3-lan-beta.${GITHUB_RUN_NUMBER}"
+          TAG="v0.8.4-lan-beta.${GITHUB_RUN_NUMBER}"
           APK="Onkyo-dahoam-$TAG.apk"
           cp app/build/outputs/apk/debug/app-debug.apk "$APK"
-          gh release create "$TAG" "$APK" --target "$GITHUB_SHA" --prerelease --title "Onkyo dahoam $TAG (installation diagnostic)" --notes "Temporary debug signing, no WireGuard or native libraries, LAN dashboard, early known-device discovery, adaptive status polling, active-only volume, streamlined radio preset changes. JVM and package verification passed; no emulator run. Diagnostic only; not a permanent update baseline. LAN only."
+          gh release create "$TAG" "$APK" --target "$GITHUB_SHA" --prerelease --title "Onkyo dahoam $TAG (installation diagnostic)" --notes "Temporary debug signing, no WireGuard or native libraries, Redesigned LAN dashboard, compact inactive zones, contextual controls and integrated audio options. JVM, package verification and Android UI smoke checks passed. Diagnostic only; not a permanent update baseline. LAN only."

@@ -9,59 +9,68 @@ import android.view.*;
 import android.widget.*;
 import java.util.*;
 public class MainActivity extends Activity {
- static final int BG=0xff101619,PANEL=0xff20292d,FG=0xffeef3f1,MUTED=0xffa8b9bb,ACCENT=0xff7bd8bc,CAP=100;
+ static final int BG=0xff111719,PANEL=0xff1d2629,FG=0xffeef3f1,MUTED=0xffa8b9bb,ACCENT=0xff7bd8bc,BUTTON=0xff303c40,CAP=100;
  final String[] names={"TV","CBL/SAT","GAME","BD/DVD","STRM BOX","PC","AUX","CD","PHONO","FM","AM","NET","Bluetooth"};
  final String[] codes={"12","01","02","10","11","05","03","23","22","24","25","2B","2E"};
  final String[] netNames={"NET allgemein","Spotify","TuneIn Radio","Musikserver","Favoriten","Deezer"};
  final String[] netCodes={"","0A","0E","00","01","12"};
  final Zone[] zones={new Zone(),new Zone()};
  TextView status;LinearLayout linked;Button groupMinus,groupPlus;Receiver receiver;SharedPreferences prefs;
- LinearLayout dashboard,mainControls,detailContainer;ScrollView detailScroll;
+ LinearLayout dashboard;
  static final class Detail {LinearLayout body;Button header,mute,mode;final Map<String,View> rows=new HashMap<>();final Map<String,TextView> values=new HashMap<>();final Map<String,Button[]> buttons=new HashMap<>();}
  final Detail[] detailsPanels={new Detail(),new Detail()};final boolean[] detailOpen={false,false};
  boolean manual,choosing;String deviceId="";Network activeNetwork;final Map<String,String> audio=new HashMap<>();
  boolean connected,demo,connecting,foreground;int generation;String ip="",service="";Capabilities capabilities;String serviceCode="";long nextProfileQuery;final int[] currentPreset={-1,-1};final String[] currentFrequency={"",""};
  final Handler handler=new Handler(Looper.getMainLooper());
- static class Zone{Boolean power,mute;int vol=-1,pending=-1;long pendingUntil;boolean unavailable;String source="";TextView value;Button powerBtn,src,mediaPrev,mediaChoice,mediaPlay,mediaNext;LinearLayout mediaRow;SeekBar slider;boolean dragging;long lastDrag;}
+ static class Zone{Boolean power,mute;int vol=-1,pending=-1;long pendingUntil;boolean unavailable;String source="";TextView value;Button powerBtn,src,mediaPrev,mediaChoice,mediaPlay,mediaNext,minus,plus;LinearLayout mediaRow,volumeRow,activeControls;SeekBar slider;boolean dragging;long lastDrag;}
  int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
  TextView label(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setGravity(Gravity.CENTER_VERTICAL);return t;}
  LinearLayout row(){LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);return r;}
  LinearLayout col(){LinearLayout r=new LinearLayout(this);r.setOrientation(1);return r;}
  GradientDrawable shape(int c,int radius){GradientDrawable d=new GradientDrawable();d.setColor(c);d.setCornerRadius(dp(radius));return d;}
- Button btn(String s){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setTextSize(15);b.setTextColor(FG);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(8),0,dp(8),0);b.setBackground(shape(0xff344247,10));return b;}
+ Button btn(String s){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setTextSize(15);b.setTextColor(FG);b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(8),0,dp(8),0);b.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x447bd8bc),shape(BUTTON,9),null));b.setTextColor(new android.content.res.ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled},new int[]{}},new int[]{0xff78888b,FG}));return b;}
  void add(LinearLayout r,View v,int w,int h){r.addView(v,new LinearLayout.LayoutParams(w<0?w:dp(w),h<0?h:dp(h)));}
  void weighted(LinearLayout r,View v,int h){r.addView(v,new LinearLayout.LayoutParams(0,h<0?h:dp(h),1));}
  void gap(LinearLayout r,int h){add(r,new View(this),1,h);}
  void hgap(LinearLayout r,int w){add(r,new View(this),w,1);}
- @Override public void onCreate(Bundle b){super.onCreate(b);Diagnostics.open(getFilesDir());Diagnostics.event("APP","v0.8.1 Android API="+Build.VERSION.SDK_INT+" screenDp="+getResources().getConfiguration().screenWidthDp+"x"+getResources().getConfiguration().screenHeightDp);prefs=getSharedPreferences("config",MODE_PRIVATE);
+ @Override public void onCreate(Bundle b){super.onCreate(b);Diagnostics.open(getFilesDir());Diagnostics.event("APP","v"+"0.8.4"+" Android API="+Build.VERSION.SDK_INT+" screenDp="+getResources().getConfiguration().screenWidthDp+"x"+getResources().getConfiguration().screenHeightDp);prefs=getSharedPreferences("config",MODE_PRIVATE);
   getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
-  LinearLayout root=col();root.setBackgroundColor(BG);root.setPadding(dp(8),dp(4),dp(8),dp(4));dashboard=root;setContentView(root);
-  LinearLayout head=row();ImageView brand=new ImageView(this);brand.setImageResource(R.drawable.dz_logo);brand.setContentDescription("Onkyo dahoam");add(head,brand,25,25);hgap(head,4);
-  TextView title=label("Onkyo dahoam",15,FG);title.setContentDescription("Onkyo dahoam – TX-NR656");title.setTypeface(null,Typeface.BOLD);title.setMaxLines(2);weighted(head,title,44);
-  linked=row();groupMinus=btn("−");groupMinus.setTextSize(21);groupMinus.setContentDescription("Alle aktiven Zonen leiser");add(linked,groupMinus,44,44);hgap(linked,3);groupPlus=btn("+");groupPlus.setTextSize(21);groupPlus.setContentDescription("Alle aktiven Zonen lauter");add(linked,groupPlus,44,44);add(head,linked,-2,44);hgap(head,4);
+  LinearLayout root=col();root.setBackgroundColor(BG);root.setPadding(dp(12),dp(6),dp(12),dp(6));dashboard=root;setContentView(root);
+  LinearLayout head=row();ImageView brand=new ImageView(this);brand.setImageResource(R.drawable.dz_logo);brand.setContentDescription("Onkyo dahoam");add(head,brand,28,28);hgap(head,8);
+  TextView title=label("Onkyo dahoam",18,FG);title.setContentDescription("Onkyo dahoam – TX-NR656");title.setTypeface(null,Typeface.BOLD);title.setMaxLines(2);weighted(head,title,48);
+  Button tv=btn("TV");tv.setTextSize(13);tv.setContentDescription("Google TV öffnen");add(head,tv,48,48);hgap(head,8);tv.setOnClickListener(v->openGoogleTv());
+  Button config=btn("⚙");config.setTextSize(20);config.setContentDescription("Verbindung");add(head,config,48,48);config.setOnClickListener(v->connectionMenu());add(root,head,-1,48);
+  status=label("",12,MUTED);status.setMaxLines(2);status.setOnClickListener(v->diagnosticsDialog());add(root,status,-1,36);
+  ScrollView scroll=new ScrollView(this);scroll.setFillViewport(false);scroll.setClipToPadding(false);scroll.setVerticalScrollBarEnabled(false);
+  LinearLayout cards=col();cards.setPadding(0,dp(4),0,dp(12));scroll.addView(cards,new ScrollView.LayoutParams(-1,-2));
+  linked=row();linked.setPadding(dp(10),0,dp(4),0);linked.setBackground(shape(PANEL,12));
+  TextView all=label("Beide Zonen · Lautstärke",13,MUTED);weighted(linked,all,48);hgap(linked,4);
+  groupMinus=btn("−");groupMinus.setTextSize(21);groupMinus.setContentDescription("Alle aktiven Zonen leiser");add(linked,groupMinus,48,48);hgap(linked,6);
+  groupPlus=btn("+");groupPlus.setTextSize(21);groupPlus.setContentDescription("Alle aktiven Zonen lauter");add(linked,groupPlus,48,48);
   groupMinus.setOnClickListener(v->stepGroup(-1));groupPlus.setOnClickListener(v->stepGroup(1));
-  Button tv=btn("TV");tv.setTextSize(12);tv.setContentDescription("Google TV öffnen");add(head,tv,40,44);hgap(head,4);tv.setOnClickListener(v->openGoogleTv());
-  Button config=btn("⚙");config.setTextSize(20);config.setContentDescription("Verbindung");add(head,config,44,44);config.setOnClickListener(v->connectionMenu());add(root,head,-1,44);
-  status=label("",11,MUTED);status.setMaxLines(2);status.setOnClickListener(v->diagnosticsDialog());add(root,status,-1,30);
-  mainControls=col();add(mainControls,zoneCard(0),-1,-2);gap(mainControls,5);add(mainControls,zoneCard(1),-1,-2);add(root,mainControls,-1,-2);
-  gap(root,5);TextView caption=label("Erweiterte Einstellungen",12,MUTED);add(root,caption,-1,22);
-  detailScroll=new ScrollView(this);detailScroll.setFillViewport(false);detailScroll.setClipToPadding(false);detailScroll.setVerticalScrollBarEnabled(false);
-  detailContainer=col();detailScroll.addView(detailContainer,new ScrollView.LayoutParams(-1,-2));
-  for(int i=0;i<2;i++){if(b!=null)detailOpen[i]=b.getBoolean("detail"+i,false);add(detailContainer,detailCard(i),-1,-2);gap(detailContainer,5);}
-  root.addView(detailScroll,new LinearLayout.LayoutParams(-1,0,1));
+  LinearLayout.LayoutParams groupParams=new LinearLayout.LayoutParams(-1,-2);groupParams.bottomMargin=dp(10);cards.addView(linked,groupParams);
+  for(int i=0;i<2;i++){if(b!=null)detailOpen[i]=b.getBoolean("detail"+i,false);add(cards,zoneCard(i),-1,-2);if(i==0)gap(cards,10);}
+  root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
   ip=prefs.getString("ip","");manual=prefs.getBoolean("manual",false);deviceId=prefs.getString("deviceId","");demo=false;status.setText("Receiver wird gesucht …");render();
  }
- LinearLayout zoneCard(int idx){Zone z=zones[idx];LinearLayout c=col();c.setPadding(dp(8),dp(5),dp(8),dp(5));c.setBackground(shape(PANEL,12));
-  LinearLayout top=row();TextView title=label(idx==0?"Wohnzimmer":"Esstisch",16,FG);title.setTypeface(null,Typeface.BOLD);title.setSingleLine(true);weighted(top,title,44);hgap(top,4);
-  z.src=btn("Quelle");z.src.setTextSize(13);z.src.setSingleLine(true);z.src.setEllipsize(android.text.TextUtils.TruncateAt.END);z.src.setContentDescription(idx==0?"Quelle Wohnzimmer":"Quelle Esstisch");weighted(top,z.src,44);hgap(top,4);
-  z.powerBtn=btn("--");z.powerBtn.setTextSize(13);z.powerBtn.setContentDescription(idx==0?"Power Wohnzimmer":"Power Esstisch");add(top,z.powerBtn,52,44);add(c,top,-1,44);
-  LinearLayout vol=row();z.slider=new SeekBar(this);z.slider.setMax(CAP);z.slider.setPadding(dp(8),0,dp(8),0);z.slider.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));z.slider.setThumbTintList(android.content.res.ColorStateList.valueOf(ACCENT));weighted(vol,z.slider,44);z.value=label("--",20,FG);z.value.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);z.value.setTypeface(null,Typeface.BOLD);add(vol,z.value,48,44);add(c,vol,-1,44);
+ LinearLayout zoneCard(int idx){Zone z=zones[idx];LinearLayout c=col();c.setPadding(dp(12),dp(8),dp(12),dp(8));c.setBackground(shape(PANEL,16));
+  LinearLayout top=row();TextView title=label(idx==0?"Wohnzimmer":"Esstisch",18,FG);title.setTypeface(null,Typeface.BOLD);title.setSingleLine(true);weighted(top,title,48);hgap(top,8);
+  z.powerBtn=btn("–");z.powerBtn.setTextSize(14);z.powerBtn.setContentDescription(idx==0?"Power Wohnzimmer":"Power Esstisch");add(top,z.powerBtn,82,48);add(c,top,-1,48);
+  z.activeControls=col();add(c,z.activeControls,-1,-2);gap(z.activeControls,4);
+  z.src=btn("Quelle ▾");z.src.setTextSize(14);z.src.setSingleLine(true);z.src.setEllipsize(android.text.TextUtils.TruncateAt.END);z.src.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);z.src.setPadding(dp(12),0,dp(12),0);z.src.setContentDescription(idx==0?"Quelle Wohnzimmer":"Quelle Esstisch");add(z.activeControls,z.src,-1,48);
+  gap(z.activeControls,6);
+  LinearLayout vol=row();z.volumeRow=vol;
+  z.minus=btn("−");z.minus.setTextSize(20);z.minus.setContentDescription(idx==0?"Leiser Wohnzimmer":"Leiser Esstisch");add(vol,z.minus,48,48);z.minus.setOnClickListener(v->stepZone(idx,-1));
+  z.slider=new SeekBar(this);z.slider.setMax(CAP);z.slider.setPadding(dp(10),0,dp(10),0);z.slider.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));z.slider.setThumbTintList(android.content.res.ColorStateList.valueOf(ACCENT));weighted(vol,z.slider,48);
+  z.value=label("--",20,FG);z.value.setGravity(Gravity.CENTER);z.value.setTypeface(null,Typeface.BOLD);add(vol,z.value,50,48);hgap(vol,4);
+  z.plus=btn("+");z.plus.setTextSize(20);z.plus.setContentDescription(idx==0?"Lauter Wohnzimmer":"Lauter Esstisch");add(vol,z.plus,48,48);z.plus.setOnClickListener(v->stepZone(idx,1));add(z.activeControls,vol,-1,48);
   z.mediaRow=row();z.mediaPrev=btn("‹");z.mediaChoice=btn("Quelle");z.mediaPlay=btn("⏯");z.mediaNext=btn("›");z.mediaChoice.setTextSize(12);z.mediaChoice.setSingleLine(true);z.mediaChoice.setEllipsize(android.text.TextUtils.TruncateAt.END);
-  add(z.mediaRow,z.mediaPrev,44,44);weighted(z.mediaRow,z.mediaChoice,44);add(z.mediaRow,z.mediaPlay,44,44);add(z.mediaRow,z.mediaNext,44,44);
-  c.addView(z.mediaRow,new LinearLayout.LayoutParams(-1,dp(44)));
+  add(z.mediaRow,z.mediaPrev,48,48);weighted(z.mediaRow,z.mediaChoice,48);add(z.mediaRow,z.mediaPlay,48,48);add(z.mediaRow,z.mediaNext,48,48);
+  LinearLayout.LayoutParams mediaLp=new LinearLayout.LayoutParams(-1,dp(48));mediaLp.topMargin=dp(6);z.activeControls.addView(z.mediaRow,mediaLp);
   z.mediaPrev.setOnClickListener(v->mediaStep(idx,-1));z.mediaNext.setOnClickListener(v->mediaStep(idx,1));z.mediaPlay.setOnClickListener(v->transport(idx,"P/P"));z.mediaChoice.setOnClickListener(v->{String media=effectiveSource(idx);if(isRadio(media))radioDialog(idx);else if(media.equals("2B"))netDialog(idx);else if(media.equals("12"))openGoogleTv();});
   z.powerBtn.setOnClickListener(v->{if(z.power!=null)send((idx==0?"PWR":"ZPW")+(z.power?"00":"01"));});z.src.setOnClickListener(v->sourceDialog(idx));
   z.slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar s){z.dragging=true;z.lastDrag=0;}public void onProgressChanged(SeekBar s,int n,boolean user){if(user){z.value.setText(Protocol.volumeLabel(n,scale(idx)));dragVolume(idx,n,z.dragging);}}public void onStopTrackingTouch(SeekBar s){z.dragging=false;setVolume(idx,s.getProgress());render();}});
+  gap(z.activeControls,6);add(z.activeControls,detailCard(idx),-1,-2);
   return c;
  }
  int zoneIndex(Zone z){return z==zones[0]?0:1;}
@@ -89,8 +98,19 @@ public class MainActivity extends Activity {
  String volumeText(Zone z){return Boolean.FALSE.equals(z.power)?"":!connected||z.power==null||z.unavailable?"–":Protocol.volumeLabel(shownVolume(z),scale(zoneIndex(z)))+(z.pending>=0?"…":"");}
  void receiveVolume(Zone z,String v){int raw=Protocol.volume(v);if(raw<0){Diagnostics.event("VOLUME","invalid reply zone="+(zoneIndex(z)+1));return;}z.unavailable=false;z.vol=raw;if(z.pending==raw)z.pending=-1;}
  boolean canLink(){return canVolume(zones[0])&&canVolume(zones[1]);}
- void render(){expireVolumes();for(Zone z:zones){boolean on=Boolean.TRUE.equals(z.power);z.powerBtn.setEnabled(connected&&z.power!=null);z.powerBtn.setText(z.power==null?"--":on?"An":"Aus");z.powerBtn.setTextColor(on?ACCENT:FG);z.src.setEnabled(connected&&on);z.src.setText(z.source.isEmpty()?"Quelle":z.source.equals("2B")&&!service.isEmpty()?service:z.source.equals("80")?"SOURCE":sourceName(z.source));z.slider.setEnabled(canVolume(z));z.slider.setVisibility(Boolean.FALSE.equals(z.power)?View.INVISIBLE:View.VISIBLE);renderMedia(zoneIndex(z));if(!z.dragging){z.slider.setMax(maxVolume(zoneIndex(z)));z.slider.setProgress(Math.max(0,shownVolume(z)));z.value.setText(volumeText(z));z.slider.setContentDescription("Lautstärke "+(zoneIndex(z)==0?"Wohnzimmer":"Esstisch")+(z.unavailable?" · nicht verfügbar":" · Maximum "+Protocol.volumeLabel(maxVolume(zoneIndex(z)),scale(zoneIndex(z)))));}}
-  groupMinus.setEnabled(canGroup(-1));groupPlus.setEnabled(canGroup(1));renderDetails();publishWidgetState();
+ void render(){expireVolumes();
+  if(connected&&!demo&&status.getText().toString().startsWith("Verbunden ·"))status.setText("● Verbunden");
+  status.setTextColor(connected&&!demo?ACCENT:MUTED);
+  for(Zone z:zones){int idx=zoneIndex(z);boolean on=zoneOn(idx),known=z.power!=null;
+   z.powerBtn.setEnabled(connected&&known);z.powerBtn.setText(!known?"–":on?"⏻ An":"⏻ Aus");
+   z.powerBtn.setTextColor(!connected||!known?MUTED:on?0xff102923:FG);z.powerBtn.setBackgroundTintList(android.content.res.ColorStateList.valueOf(on?ACCENT:BUTTON));
+   z.activeControls.setVisibility(on?View.VISIBLE:View.GONE);
+   z.src.setEnabled(on);z.src.setText((z.source.isEmpty()?"Quelle wählen":z.source.equals("2B")&&!service.isEmpty()?service:z.source.equals("80")?"SOURCE":sourceName(z.source))+" ▾");
+   boolean volume=canVolume(z);z.slider.setEnabled(volume);z.minus.setEnabled(volume&&shownVolume(z)>=scale(idx));z.plus.setEnabled(volume&&shownVolume(z)+scale(idx)<=maxVolume(idx));
+   renderMedia(idx);
+   if(!z.dragging){z.slider.setMax(maxVolume(idx));z.slider.setProgress(Math.max(0,shownVolume(z)));z.value.setText(volumeText(z));z.slider.setContentDescription("Lautstärke "+(idx==0?"Wohnzimmer":"Esstisch")+(z.unavailable?" · nicht verfügbar":" · Maximum "+Protocol.volumeLabel(maxVolume(idx),scale(idx))));}
+  }
+  linked.setVisibility(zoneOn(0)&&zoneOn(1)?View.VISIBLE:View.GONE);groupMinus.setEnabled(canGroup(-1));groupPlus.setEnabled(canGroup(1));renderDetails();publishWidgetState();
  }
  String sourceName(String c){if(c.equals("80"))return "SOURCE";if(capabilities!=null){String name=capabilities.sourceName(c);if(name!=null)return name;}for(int i=0;i<codes.length;i++)if(codes[i].equals(c))return names[i];return c.isEmpty()?"Quelle unbekannt":"Quelle "+c;}
  LinkedHashMap<String,String> sources(int idx){if(capabilities!=null&&capabilities.hasSelectors)return capabilities.sources(idx);LinkedHashMap<String,String> out=new LinkedHashMap<>();if(idx==1)out.put("80","SOURCE");for(int j=0;j<codes.length;j++)if(idx==0||!codes[j].equals("05"))out.put(codes[j],names[j]);return out;}
@@ -128,7 +148,7 @@ public class MainActivity extends Activity {
   for(Button button:new Button[]{z.mediaPrev,z.mediaChoice,z.mediaPlay,z.mediaNext}){
    LinearLayout.LayoutParams lp=(LinearLayout.LayoutParams)button.getLayoutParams();
    if(button.getVisibility()!=View.VISIBLE)continue;
-   int width=button==z.mediaChoice||!choiceVisible?0:dp(44);float weight=button==z.mediaChoice||!choiceVisible?1:0;
+   int width=button==z.mediaChoice||!choiceVisible?0:dp(48);float weight=button==z.mediaChoice||!choiceVisible?1:0;
    int margin=first?0:dp(6);first=false;
    if(lp.width!=width||lp.weight!=weight||lp.leftMargin!=margin){lp.width=width;lp.weight=weight;lp.leftMargin=margin;button.setLayoutParams(lp);}
   }
@@ -171,8 +191,8 @@ public class MainActivity extends Activity {
  String netName(String code){if(capabilities!=null){String name=capabilities.serviceName(code);if(name!=null)return name;}for(int i=1;i<netCodes.length;i++)if(netCodes[i].equals(code))return netNames[i];return "";}
  void queryProfile(){if(receiver!=null&&connected&&SystemClock.elapsedRealtime()>=nextProfileQuery){nextProfileQuery=SystemClock.elapsedRealtime()+(capabilities==null?15000:120000);receiver.send("NRIQSTN");}}
  LinearLayout detailCard(int idx){
-  Detail d=detailsPanels[idx];LinearLayout card=col();card.setPadding(dp(8),dp(4),dp(8),dp(4));card.setBackground(shape(PANEL,12));
-  d.header=btn("");d.header.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);d.header.setTextSize(15);d.header.setContentDescription(idx==0?"Details Wohnzimmer":"Details Esstisch");add(card,d.header,-1,44);
+  Detail d=detailsPanels[idx];LinearLayout card=col();
+  d.header=btn("");d.header.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);d.header.setTextSize(13);d.header.setPadding(dp(12),0,dp(12),0);d.header.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff253135));d.header.setContentDescription(idx==0?"Details Wohnzimmer":"Details Esstisch");add(card,d.header,-1,48);
   d.body=col();d.body.setPadding(dp(3),dp(4),dp(3),dp(2));add(card,d.body,-1,-2);
   d.mute=btn("Ton stummschalten");add(d.body,d.mute,-1,44);d.mute.setOnClickListener(v->{Zone z=zones[idx];if(zoneOn(idx)&&z.mute!=null)send((idx==0?"AMT":"ZMT")+(z.mute?"00":"01"));});
   if(idx==0){gap(d.body,4);d.mode=btn("Hörmodus");add(d.body,d.mode,-1,44);d.mode.setOnClickListener(v->modeDialog());
@@ -214,7 +234,7 @@ public class MainActivity extends Activity {
  }
  void renderDetails(){
   for(int i=0;i<2;i++){Detail d=detailsPanels[i];if(d.header==null)continue;Zone z=zones[i];boolean on=zoneOn(i);
-   d.header.setText((i==0?"Wohnzimmer":"Esstisch")+"   "+(detailOpen[i]?"▴":"▾"));d.body.setVisibility(detailOpen[i]?View.VISIBLE:View.GONE);
+   d.header.setText("Klang & Optionen   "+(detailOpen[i]?"▴":"▾"));d.body.setVisibility(detailOpen[i]&&on?View.VISIBLE:View.GONE);
    d.mute.setText(z.mute==null?"Stumm · unbekannt":z.mute?"Stumm · aufheben":"Ton stummschalten");d.mute.setEnabled(on&&z.mute!=null);
    if(d.mode!=null){d.mode.setText("Hörmodus · "+modeName(audio.get("LMD")));d.mode.setEnabled(on&&audio.containsKey("LMD"));}
    for(String key:d.rows.keySet()){boolean supported=allowedAudio(key);d.rows.get(key).setVisibility(supported?View.VISIBLE:View.GONE);

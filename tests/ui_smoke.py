@@ -63,6 +63,11 @@ tap("Details Wohnzimmer")
 wait_for("Bass")
 assert len([n for n in nodes() if n.get("class")=="android.widget.SeekBar"])==2
 tap("Details Wohnzimmer")
+tap("Power Esstisch")
+assert len([n for n in nodes() if n.get("class")=="android.widget.SeekBar"])==1
+assert not any(n.get("content-desc") in ("Quelle Esstisch","Details Esstisch","Alle aktiven Zonen lauter") for n in nodes())
+wait_for("Leiser Wohnzimmer")
+wait_for("Lauter Wohnzimmer")
 tap("Verbindung")
 tap("Diagnosebericht")
 wait_for("TXT exportieren")
