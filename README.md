@@ -35,3 +35,6 @@ Local rotating diagnostic logs: Connection > Diagnosebericht (or tap the status)
 Automated JVM protocol, TCP, discovery, capability and logging tests plus Android emulator smoke test. Hardware verification pending. Test volume cap 50. Persistent signing, scenes and widgets pending.
 
 APK from GitHub Actions artifacts. Debug signing may require uninstalling earlier versions.
+
+### Preview 3: Radio and universal volume widgets
+Radio 3×2: station up/down cycles saved FM presets, or uses tuner up/down when no presets are reported; actual automatic seek depends on receiver tuning mode. When no FM zone is active, switch Esstisch to FM, power on if necessary, starting volume 45 on power-on (capped by receiver maximum). Zone buttons toggle FM on/off. +/- affects all active zones, independent of source. Universal 2×1 replaces the two individual volume widgets. Both show last confirmed state and mark stale readings; press status for a read-only refresh. Actual receiver and VPN tests still required.

@@ -11,28 +11,28 @@ import java.util.*;
 public final class SceneService extends Service {
  static final String CHANNEL="scene_control";
  final Handler main=new Handler(Looper.getMainLooper());
- boolean running,checking;int activeId=-1,token;Thread worker;volatile Socket activeSocket;
+ boolean running,checking,radio;String radioAction="";int activeId=-1,token;Thread worker;volatile Socket activeSocket;
  @Override public IBinder onBind(Intent i){return null;}
  @Override public int onStartCommand(Intent i,int flags,int startId){
   int id=i==null?-1:i.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,-1);
-  String action=i==null?"":i.getAction();boolean checkOnly=SceneWidget.CHECK.equals(action);
+  String action=i==null?"":i.getAction();boolean isRadio=RadioWidget.action(action);boolean checkOnly=SceneWidget.CHECK.equals(action)||RadioWidget.CHECK.equals(action);
   if(!running){
    NotificationManager nm=getSystemService(NotificationManager.class);nm.createNotificationChannel(new NotificationChannel(CHANNEL,"Onkyo dahoam Szenen",NotificationManager.IMPORTANCE_LOW));
    Notification n=new Notification.Builder(this,CHANNEL).setSmallIcon(R.drawable.dz_notification).setContentTitle(checkOnly?"Onkyo dahoam Verbindung prüfen":"Onkyo dahoam Szene").setContentText(checkOnly?"Status wird abgefragt":"Receiver wird gesteuert").setOngoing(true).build();
    if(Build.VERSION.SDK_INT>=34)startForeground(520,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE);else startForeground(520,n);
   }
-  if(!SceneWidget.owns(this,id)||!checkOnly&&!SceneWidget.RUN.equals(action)){if(!running)stopSelf();return START_NOT_STICKY;}
-  if(running){if(id!=activeId)SceneWidget.notice(this,id,"Andere Aktion läuft · erneut tippen");return START_NOT_STICKY;}
-  Scene scene=SceneStore.get(this,id);if(scene==null){SceneWidget.refresh(this,id);stopSelf();return START_NOT_STICKY;}
-  if(!checkOnly&&!SceneStore.begin(this,id)){SceneWidget.notice(this,id,"Speichern fehlgeschlagen · nicht gestartet");stopSelf();return START_NOT_STICKY;}
-  running=true;checking=checkOnly;activeId=id;final int job=++token;
+  if(isRadio?!RadioWidget.owns(this,id):!SceneWidget.owns(this,id)||!checkOnly&&!SceneWidget.RUN.equals(action)){if(!running)stopSelf();return START_NOT_STICKY;}
+  if(running){if(isRadio){RadioWidget.phase(this,"Aktion läuft …");}else if(id!=activeId)SceneWidget.notice(this,id,"Andere Aktion läuft · erneut tippen");return START_NOT_STICKY;}
+  Scene scene=isRadio?null:SceneStore.get(this,id);if(!isRadio&&scene==null){SceneWidget.refresh(this,id);stopSelf();return START_NOT_STICKY;}
+  if(!isRadio&&!checkOnly&&!SceneStore.begin(this,id)){SceneWidget.notice(this,id,"Speichern fehlgeschlagen · nicht gestartet");stopSelf();return START_NOT_STICKY;}
+  running=true;checking=checkOnly;radio=isRadio;radioAction=action;activeId=id;final int job=++token;
   SceneWidget.observeNetwork(this);
-  SceneWidget.phase(this,id,checkOnly?"Verbindung wird geprüft …":"Szene wird vorbereitet …");
-  Diagnostics.open(getFilesDir());Diagnostics.event("WIDGET","start check="+checkOnly+" demo="+scene.demo);
+  if(isRadio)RadioWidget.phase(this,"Verbinden …");else SceneWidget.phase(this,id,checkOnly?"Verbindung wird geprüft …":"Szene wird vorbereitet …");
+  Diagnostics.open(getFilesDir());Diagnostics.event("WIDGET","start check="+checkOnly+" demo="+(!isRadio&&scene.demo));
   worker=new Thread(()->{
    String result;
    try{
-    if(scene.demo){scene.validate();Diagnostics.event("WIDGET","demo; no network commands");result="Demo · keine Befehle";}
+    if(isRadio){runScene(null,checkOnly,job,id);result="Bestätigt";}else if(scene.demo){scene.validate();Diagnostics.event("WIDGET","demo; no network commands");result="Demo · keine Befehle";}
     else{int count=runScene(scene,checkOnly,job,id);Diagnostics.event("WIDGET","observed actions="+count);result=count==-1?"Bestätigt · Aus":scene.radioToggleZone()>=0?"Bestätigt · An":"Bestätigt";}
    }catch(SceneExecutor.SceneException e){
     Diagnostics.event("WIDGET","not confirmed; observed actions="+e.confirmed+" reason="+safeSceneError(e.getMessage()));
@@ -42,7 +42,7 @@ public final class SceneService extends Service {
    final String message=result;
    main.post(()->{
     if(!running||token!=job||activeId!=id)return;
-    if(!checkOnly&&SceneWidget.owns(this,id))SceneStore.complete(this,id,message);
+    if(isRadio){if(!message.startsWith("Bestätigt"))RadioWidget.failure(this,message);RadioWidget.phase(this,"");}else if(!checkOnly&&SceneWidget.owns(this,id))SceneStore.complete(this,id,message);
     running=false;activeId=-1;activeSocket=null;SceneWidget.phase(this,id,null);SceneWidget.refreshAll(this);
     stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();
    });
@@ -54,7 +54,7 @@ public final class SceneService extends Service {
   if(Arrays.asList("Zonenstatus unbekannt","Zone ausgeschaltet","Quelle unbekannt","SOURCE folgt Wohnzimmer","Gemeinsame Medienquelle","Gemeinsamer FM/AM-Tuner","Lautstärke über Geräte-Maximum","Radiospeicherplatz unbekannt").contains(message))return message;
   return "Receiver antwortet nicht";
  }
- void phase(int job,int id,String value){main.post(()->{if(running&&token==job&&activeId==id)SceneWidget.phase(this,id,value);});}
+ void phase(int job,int id,String value){main.post(()->{if(running&&token==job&&activeId==id){if(radio)RadioWidget.phase(this,value);else SceneWidget.phase(this,id,value);}});}
  void probe(int job,String code,long handle,String target){main.post(()->{if(running&&token==job&&target.equals(SceneStore.target(this))){SceneStore.probe(this,code,handle,target);SceneWidget.refreshAll(this);}});}
  static final class LocalFailure extends IOException{final String code;LocalFailure(String message,String code){super(message);this.code=code;}}
  int runScene(Scene scene,boolean checkOnly,int job,int id)throws Exception{
@@ -92,6 +92,21 @@ public final class SceneService extends Service {
      if(profile!=null&&!profile.model.equalsIgnoreCase("TX-NR656"))throw new LocalFailure("Falsches Receiver-Modell",WidgetStatus.WRONG_MODEL);
      if(profile==null&&manual)throw new LocalFailure("Geräteprofil nicht bestätigt",WidgetStatus.PROFILE_UNKNOWN);
      SceneExecutor.checkReceiver(wire);probe(job,WidgetStatus.REACHABLE,handle,target);
+     if(radio){
+      if(profile==null)throw new LocalFailure("Geräteprofil nicht bestätigt",WidgetStatus.PROFILE_UNKNOWN);
+      RadioControl.State state=RadioControl.read(wire,profile);
+      if(!target.equals(SceneStore.target(this))||remote&&!network.equals(RemoteVpn.network(this)))throw new LocalFailure("Verbindung geändert · erneut tippen",null);
+      switch(radioAction){
+       case RadioWidget.UP:RadioControl.step(state,wire,profile,1);break;
+       case RadioWidget.DOWN:RadioControl.step(state,wire,profile,-1);break;
+       case RadioWidget.LIVING:RadioControl.toggle(state,wire,profile,0);break;
+       case RadioWidget.DINING:RadioControl.toggle(state,wire,profile,1);break;
+       case RadioWidget.PLUS:RadioControl.adjust(state,wire,1);break;
+       case RadioWidget.MINUS:RadioControl.adjust(state,wire,-1);break;
+       default:break;
+      }
+      RadioWidget.store(this,RadioControl.read(wire,profile),profile,network);return 0;
+     }
      if(checkOnly)return 0; // Read-only check: no source, volume or power writes.
      if(!target.equals(SceneStore.target(this))||remote&&!network.equals(RemoteVpn.network(this)))throw new LocalFailure("Verbindung geändert · erneut tippen",null);
      if(scene.radioToggleZone()>=0){phase(job,id,"Radio wird geprüft …");try{if(SceneExecutor.toggleRadioOff(scene,wire)){probe(job,WidgetStatus.REACHABLE,handle,target);return -1;}}catch(IOException e){throw new SceneExecutor.SceneException(e.getMessage(),0);}}
@@ -114,8 +129,8 @@ public final class SceneService extends Service {
  void cancelWork(){if(worker!=null)worker.interrupt();try{if(activeSocket!=null)activeSocket.close();}catch(IOException ignored){}}
  @Override public void onTimeout(int startId){
   ++token;cancelWork();int id=activeId;boolean wasChecking=checking;running=false;activeId=-1;
-  if(id!=-1){if(!wasChecking&&SceneWidget.owns(this,id))SceneStore.complete(this,id,"Zeitlimit · nicht bestätigt");SceneWidget.phase(this,id,null);}
+  if(radio){RadioWidget.failure(this,"Zeitlimit · erneut tippen");RadioWidget.phase(this,"");}if(id!=-1){if(!wasChecking&&SceneWidget.owns(this,id))SceneStore.complete(this,id,"Zeitlimit · nicht bestätigt");SceneWidget.phase(this,id,null);}
   stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();
  }
- @Override public void onDestroy(){if(running){++token;cancelWork();int id=activeId;running=false;activeId=-1;if(id!=-1)SceneWidget.phase(this,id,null);}super.onDestroy();}
+ @Override public void onDestroy(){if(running){if(radio){RadioWidget.failure(this,"Unterbrochen · erneut tippen");RadioWidget.phase(this,"");}++token;cancelWork();int id=activeId;running=false;activeId=-1;if(id!=-1)SceneWidget.phase(this,id,null);}super.onDestroy();}
 }

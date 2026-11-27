@@ -41,6 +41,12 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
    small.measure(View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY));small.layout(0,0,Math.round(64*d),Math.round(64*d));
    require(small.findViewById(R.id.scene_name).getHeight()>0&&small.findViewById(R.id.scene_status).getHeight()>0,"compact title and status");
    require(((TextView)small.findViewById(R.id.scene_name)).getTextSize()>((TextView)small.findViewById(R.id.scene_status)).getTextSize(),"title more prominent");
+   View radio=RadioWidget.render(c,123,false).apply(c,new FrameLayout(c));
+   require(value(radio,R.id.radio_up).equals("▲")&&value(radio,R.id.radio_down).equals("▼"),"station controls");
+   radio.measure(View.MeasureSpec.makeMeasureSpec(Math.round(192*d),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(128*d),View.MeasureSpec.EXACTLY));radio.layout(0,0,Math.round(192*d),Math.round(128*d));
+   for(int item:new int[]{R.id.radio_up,R.id.radio_down,R.id.radio_living,R.id.radio_dining,R.id.radio_plus,R.id.radio_minus})require(radio.findViewById(item).getHeight()>0&&radio.findViewById(item).getWidth()>0,"radio button layout");
+   require(radio.findViewById(R.id.radio_up).getTop()==radio.findViewById(R.id.radio_living).getTop(),"aligned radio row");
+   View universal=RadioWidget.render(c,124,true).apply(c,new FrameLayout(c));require(value(universal,R.id.volume_living).contains("Wohnzimmer")&&value(universal,R.id.volume_dining).contains("Esstisch"),"two aligned volume labels");
    for(int zone=0;zone<2;zone++){
     View volume=VolumeWidget.render(c,zone).apply(c,new FrameLayout(c));
     require(value(volume,R.id.volume_widget_name).equals(VolumeWidget.name(zone)),"volume widget zone");

@@ -23,9 +23,9 @@ public final class SceneWidget extends AppWidgetProvider {
  static boolean busy(int id){return phases.containsKey(id);}
  static void phase(Context c,int id,String phase){if(phase==null)phases.remove(id);else phases.put(id,phase);refresh(c,id);}
  static void notice(Context c,int id,String text){phase(c,id,text);new Handler(Looper.getMainLooper()).postDelayed(()->{if(text.equals(phases.get(id)))phase(c,id,null);},3000);}
- static void refreshAll(Context c){for(int id:ids(c))refresh(c,id);}
+ static void refreshAll(Context c){for(int id:ids(c))refresh(c,id);RadioWidget.refreshAll(c);}
  static synchronized void observeNetwork(Context c){
-  if(monitor!=null||ids(c).length==0)return;
+  if(monitor!=null||ids(c).length==0&&!RadioWidget.exists(c))return;
   Context app=c.getApplicationContext();ConnectivityManager m=app.getSystemService(ConnectivityManager.class);if(m==null)return;
   Handler handler=new Handler(Looper.getMainLooper());Runnable refresh=()->refreshAll(app);
   monitor=new ConnectivityManager.NetworkCallback(){
@@ -73,5 +73,5 @@ public final class SceneWidget extends AppWidgetProvider {
  @Override public void onUpdate(Context c,AppWidgetManager m,int[] ids){observeNetwork(c);for(int id:ids)refresh(c,id);}
  @Override public void onAppWidgetOptionsChanged(Context c,AppWidgetManager m,int id,Bundle options){refresh(c,id);}
  @Override public void onDeleted(Context c,int[] ids){for(int id:ids){phases.remove(id);SceneStore.delete(c,id);}}
- @Override public void onDisabled(Context c){stopMonitor(c);}
+ @Override public void onDisabled(Context c){if(!RadioWidget.exists(c))stopMonitor(c);}
 }

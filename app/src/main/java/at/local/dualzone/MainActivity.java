@@ -78,11 +78,20 @@ public class MainActivity extends Activity {
  void receiveVolume(Zone z,String v){int raw=Protocol.volume(v);if(raw<0){Diagnostics.event("VOLUME","invalid reply zone="+(zoneIndex(z)+1));return;}z.unavailable=false;z.vol=raw;if(z.pending==raw)z.pending=-1;}
  boolean canLink(){return canVolume(zones[0])&&canVolume(zones[1])&&zones[1].source.equals("80");}
  void render(){expireVolumes();for(Zone z:zones){boolean on=Boolean.TRUE.equals(z.power);z.powerBtn.setEnabled(connected&&z.power!=null);z.powerBtn.setText(z.power==null?"--":on?"An":"Aus");z.powerBtn.setTextColor(on?ACCENT:FG);z.src.setEnabled(connected&&on);z.src.setText(sourceName(z.source)+(z.source.equals("2B")&&!service.isEmpty()?" / "+service:"")+(z.source.equals("80")?" · "+sourceName(zones[0].source):""));z.slider.setEnabled(canVolume(z));renderMedia(zoneIndex(z));if(!z.dragging){z.slider.setMax(maxVolume(zoneIndex(z)));z.slider.setProgress(Math.max(0,shownVolume(z)));z.value.setText(volumeText(z));z.slider.setContentDescription("Lautstärke "+(zoneIndex(z)==0?"Wohnzimmer":"Esstisch")+(z.unavailable?" · nicht verfügbar":" · Maximum "+Protocol.volumeLabel(maxVolume(zoneIndex(z)),scale(zoneIndex(z)))));}}
-  linked.setVisibility(zones[1].source.equals("80")?View.VISIBLE:View.GONE);groupMinus.setEnabled(canLink()&&shownVolume(zones[0])>=scale(0)&&shownVolume(zones[1])>=scale(1));groupPlus.setEnabled(canLink()&&shownVolume(zones[0])+scale(0)<=maxVolume(0)&&shownVolume(zones[1])+scale(1)<=maxVolume(1));groupText.setText("Beide Zonen"); renderDetails();
+  linked.setVisibility(zones[1].source.equals("80")?View.VISIBLE:View.GONE);groupMinus.setEnabled(canLink()&&shownVolume(zones[0])>=scale(0)&&shownVolume(zones[1])>=scale(1));groupPlus.setEnabled(canLink()&&shownVolume(zones[0])+scale(0)<=maxVolume(0)&&shownVolume(zones[1])+scale(1)<=maxVolume(1));groupText.setText("Beide Zonen"); renderDetails();publishWidgetState();
  }
  String sourceName(String c){if(c.equals("80"))return "SOURCE";if(capabilities!=null){String name=capabilities.sourceName(c);if(name!=null)return name;}for(int i=0;i<codes.length;i++)if(codes[i].equals(c))return names[i];return c.isEmpty()?"Quelle unbekannt":"Quelle "+c;}
  LinkedHashMap<String,String> sources(int idx){if(capabilities!=null&&capabilities.hasSelectors)return capabilities.sources(idx);LinkedHashMap<String,String> out=new LinkedHashMap<>();if(idx==1)out.put("80","SOURCE");for(int j=0;j<codes.length;j++)if(idx==0||!codes[j].equals("05"))out.put(codes[j],names[j]);return out;}
  LinkedHashMap<String,String> services(int idx){LinkedHashMap<String,String> out=new LinkedHashMap<>();out.put("","NET allgemein");if(capabilities!=null&&capabilities.hasServices)out.putAll(capabilities.services(idx));else for(int j=1;j<netCodes.length;j++)out.put(netCodes[j],netNames[j]);return out;}
+ long lastWidgetPublish;
+ void publishWidgetState(){
+  if(demo||!RadioWidget.exists(this)||!connected||capabilities==null||activeNetwork==null||zones[0].power==null||zones[1].power==null)return;
+  if(RemoteVpn.selected(this)&&!activeNetwork.equals(RemoteVpn.network(this)))return;
+  long now=SystemClock.elapsedRealtime();if(now-lastWidgetPublish<4000)return;lastWidgetPublish=now;
+  RadioControl.State state=new RadioControl.State();
+  for(int i=0;i<2;i++){state.on[i]=Boolean.TRUE.equals(zones[i].power);state.source[i]=zones[i].source;state.raw[i]=zones[i].vol;state.scale[i]=scale(i);state.max[i]=maxVolume(i);}
+  int tuner=state.tuner();state.preset=tuner<0?-1:currentPreset[tuner];RadioWidget.store(this,state,capabilities,activeNetwork);
+ }
  String effectiveSource(int idx){String s=zones[idx].source;return idx==1&&s.equals("80")?zones[0].source:s;}
  int effectiveZone(int idx){return idx==1&&zones[1].source.equals("80")?0:idx;}
  boolean isRadio(String code){return code.equals("24")||code.equals("25");}
@@ -230,8 +239,8 @@ public class MainActivity extends Activity {
  }
  void widgetMenu(){
   new AlertDialog.Builder(this).setTitle("Homescreen-Widgets")
-   .setItems(new String[]{"Szene hinzufügen","Lautstärke Wohnzimmer","Lautstärke Esstisch"},(d,n)->{
-    Class<?> provider=n==0?SceneWidget.class:n==1?VolumeWidget.LivingRoom.class:VolumeWidget.DiningRoom.class;
+   .setItems(new String[]{"Szene hinzufügen","Lautstärke gemeinsam (2×1)","Radio (3×2)"},(d,n)->{
+    Class<?> provider=n==0?SceneWidget.class:n==1?RadioWidget.Universal.class:RadioWidget.class;
     android.appwidget.AppWidgetManager m=android.appwidget.AppWidgetManager.getInstance(this);
     if(!m.isRequestPinAppWidgetSupported()||!m.requestPinAppWidget(new ComponentName(this,provider),null,null))
       Toast.makeText(this,"Homescreen lange drücken → Widgets → Onkyo dahoam",Toast.LENGTH_LONG).show();
