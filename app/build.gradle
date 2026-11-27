@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
  namespace 'at.local.dualzone'
  compileSdk 36
- defaultConfig { applicationId 'at.local.dualzone'; minSdk 26; targetSdk 34; versionCode (System.getenv('ONKYO_VERSION_CODE') ?: '19').toInteger(); versionName '0.8.1'; testInstrumentationRunner 'at.local.dualzone.WidgetRenderInstrumentation' }
+ defaultConfig { applicationId 'at.local.dualzone'; minSdk 26; targetSdk 34; versionCode (System.getenv('ONKYO_VERSION_CODE') ?: '19').toInteger(); versionName '0.8.2'; testInstrumentationRunner 'at.local.dualzone.WidgetRenderInstrumentation' }
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
 

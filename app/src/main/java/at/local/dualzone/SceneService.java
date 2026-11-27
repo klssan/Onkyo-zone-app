@@ -88,7 +88,7 @@ public final class SceneService extends Service {
     phase(job,id,"Gerätestatus wird geprüft …");
     try(SceneExecutor.SocketWire wire=new SceneExecutor.SocketWire(socket,30000)){
      Capabilities profile=null;
-     try{profile=Capabilities.parse(wire.query("NRI"));}catch(Exception e){Diagnostics.error("WIDGET_PROFILE_UNAVAILABLE",e);}
+     try{String nri=wire.query("NRI");profile=Capabilities.parse(nri);if(profile.model.equalsIgnoreCase("TX-NR656"))SceneProfile.save(this,nri);}catch(Exception e){Diagnostics.error("WIDGET_PROFILE_UNAVAILABLE",e);}
      if(profile!=null&&!profile.model.equalsIgnoreCase("TX-NR656"))throw new LocalFailure("Falsches Receiver-Modell",WidgetStatus.WRONG_MODEL);
      if(profile==null&&manual)throw new LocalFailure("Geräteprofil nicht bestätigt",WidgetStatus.PROFILE_UNKNOWN);
      SceneExecutor.checkReceiver(wire);probe(job,WidgetStatus.REACHABLE,handle,target);

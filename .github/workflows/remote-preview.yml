@@ -86,7 +86,9 @@ jobs:
           "$TOOLS/aapt" dump badging "$APK" > /tmp/apk-info.txt
           grep -F "package: name='at.local.dualzone' versionCode='$ONKYO_VERSION_CODE' versionName='$VERSION'" /tmp/apk-info.txt
           grep -F "application-label:'Onkyo dahoam'" /tmp/apk-info.txt
-          "$TOOLS/apksigner" verify --print-certs "$APK" > /tmp/new-cert.txt
+          "$TOOLS/apksigner" verify --verbose --print-certs "$APK" > /tmp/new-cert.txt
+          "$TOOLS/zipalign" -c -P 16 4 "$APK"
+          python3 tests/apk_native_check.py "$APK"
           gh api --paginate --slurp "repos/$GH_REPO/releases?per_page=100" > /tmp/releases.json
           python3 - <<'PY' > /tmp/previous-tag
           import json,re
