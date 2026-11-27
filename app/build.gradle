@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
  namespace 'at.local.dualzone'
  compileSdk 36
- defaultConfig { applicationId 'at.local.dualzone'; minSdk 26; targetSdk 34; versionCode 22; versionName '0.8.4'; testInstrumentationRunner 'at.local.dualzone.WidgetRenderInstrumentation' }
+ defaultConfig { applicationId 'at.local.dualzone'; minSdk 26; targetSdk 34; versionCode 23; versionName '0.8.5'; testInstrumentationRunner 'at.local.dualzone.WidgetRenderInstrumentation' }
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
 
