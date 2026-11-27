@@ -9,6 +9,8 @@ jobs:
   preview:
     if: github.ref == 'refs/heads/feature/remote-wireguard'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -23,6 +25,11 @@ jobs:
           packages: 'platform-tools'
           log-accepted-android-sdk-licenses: false
       - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      - name: JVM regression and retry tests
+        run: |
+          mkdir -p /tmp/onkyo-tests
+          javac -d /tmp/onkyo-tests app/src/main/java/at/local/dualzone/{Protocol,Receiver,Discovery,Capabilities,Diagnostics,Scene,SceneExecutor,WidgetStatus,RetryPolicy}.java tests/*.java
+          for t in Protocol Receiver Discovery Capabilities Diagnostics WireReplay Scene WidgetStatus Volume RetryPolicy; do java -cp /tmp/onkyo-tests at.local.dualzone.${t}Test; done
       - run: gradle --no-daemon assembleDebug assembleDebugAndroidTest
       - name: Enable KVM
         run: |
@@ -41,3 +48,12 @@ jobs:
           name: Onkyo-dahoam-wireguard-preview
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - name: Publish verified preview APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
+          cp "$APK" Onkyo-dahoam-v0.8.0-preview.2.apk
+          gh release create v0.8.0-preview.2 Onkyo-dahoam-v0.8.0-preview.2.apk --target "${{ github.sha }}" --prerelease --title "Onkyo dahoam 0.8.0 VPN preview 2" --notes "Preview only. JVM and emulator checks passed; actual FRITZ!Box/VPN, LTE switching and Android widget background behavior require real-device testing. Temporary debug signature; uninstall may be required. Separate volume widgets remain in this preview."

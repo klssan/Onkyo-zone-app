@@ -20,7 +20,7 @@ final class SceneStore {
   SharedPreferences p=prefs(c);long pending=p.getLong("pending_"+id,0);
   return WidgetStatus.execution(p.getString("run_"+id,""),p.getLong("runAt_"+id,0),pending>0,pending,running);
  }
- static String target(Context c){if(RemoteVpn.selected())return "vpn:"+RemoteVpn.target;SharedPreferences p=c.getSharedPreferences("config",Context.MODE_PRIVATE);return p.getBoolean("manual",false)?"manual:"+p.getString("ip",""):"auto:"+p.getString("deviceId","");}
+ static String target(Context c){if(RemoteVpn.selected(c))return "remote:"+RemoteVpn.target(c);SharedPreferences p=c.getSharedPreferences("config",Context.MODE_PRIVATE);return p.getBoolean("manual",false)?"manual:"+p.getString("ip",""):"auto:"+p.getString("deviceId","");}
  static void probe(Context c,String code,long networkHandle,String target){prefs(c).edit().putString("probeCode",code).putLong("probeAt",System.currentTimeMillis()).putLong("probeNetwork",networkHandle).putString("probeTarget",target).apply();}
  static void invalidateNetwork(Context c,long networkHandle){SharedPreferences p=prefs(c);if(p.getLong("probeNetwork",0)==networkHandle)p.edit().remove("probeCode").remove("probeAt").remove("probeNetwork").remove("probeTarget").apply();}
  static WidgetStatus.Line connection(Context c,boolean demo,long handle,String phase){

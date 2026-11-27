@@ -58,13 +58,16 @@ public final class SceneService extends Service {
  void probe(int job,String code,long handle,String target){main.post(()->{if(running&&token==job&&target.equals(SceneStore.target(this))){SceneStore.probe(this,code,handle,target);SceneWidget.refreshAll(this);}});}
  static final class LocalFailure extends IOException{final String code;LocalFailure(String message,String code){super(message);this.code=code;}}
  int runScene(Scene scene,boolean checkOnly,int job,int id)throws Exception{
-  ConnectivityManager cm=getSystemService(ConnectivityManager.class);Network network=SceneWidget.lan(this);
+  ConnectivityManager cm=getSystemService(ConnectivityManager.class);boolean remote=RemoteVpn.selected(this);
+  Network network=SceneWidget.lan(this);
+  if(remote&&network==null){phase(job,id,"Verbindung wird aufgebaut …");try{network=RemoteVpn.ensure(this,true,false);}catch(Exception e){throw new LocalFailure(RemoteVpn.status(this),WidgetStatus.UNREACHABLE);}}
+  if(Thread.currentThread().isInterrupted())throw new InterruptedIOException();
   long handle=network==null?0:network.getNetworkHandle();
   SharedPreferences config=getSharedPreferences("config",MODE_PRIVATE);boolean manual=config.getBoolean("manual",false);String ip=config.getString("ip",""),deviceId=config.getString("deviceId","");
-  boolean remote=RemoteVpn.selected();if(remote){manual=true;ip=RemoteVpn.target;}
+  if(remote){manual=true;ip=RemoteVpn.target(this);}
   String target=SceneStore.target(this),failure=WidgetStatus.DISCOVERY_ERROR;
   try{
-   if(network==null)throw new LocalFailure(remote?"Fernzugriff in App verbinden":"Kein WLAN/LAN",WidgetStatus.NO_LAN);
+   if(network==null)throw new LocalFailure(remote?RemoteVpn.status(this):"Kein WLAN/LAN",WidgetStatus.NO_LAN);
    if(!manual){
     phase(job,id,"Onkyo wird gesucht …");
     ArrayList<InetAddress> targets=new ArrayList<>();LinkProperties props=cm.getLinkProperties(network);
@@ -90,7 +93,7 @@ public final class SceneService extends Service {
      if(profile==null&&manual)throw new LocalFailure("Geräteprofil nicht bestätigt",WidgetStatus.PROFILE_UNKNOWN);
      SceneExecutor.checkReceiver(wire);probe(job,WidgetStatus.REACHABLE,handle,target);
      if(checkOnly)return 0; // Read-only check: no source, volume or power writes.
-     if(!target.equals(SceneStore.target(this)))throw new LocalFailure("Receiver-Auswahl geändert",null);
+     if(!target.equals(SceneStore.target(this))||remote&&!network.equals(RemoteVpn.network(this)))throw new LocalFailure("Verbindung geändert · erneut tippen",null);
      if(scene.radioToggleZone()>=0){phase(job,id,"Radio wird geprüft …");try{if(SceneExecutor.toggleRadioOff(scene,wire)){probe(job,WidgetStatus.REACHABLE,handle,target);return -1;}}catch(IOException e){throw new SceneExecutor.SceneException(e.getMessage(),0);}}
      if(profile!=null)for(int z=0;z<2;z++){Scene.Zone setting=scene.zones[z];
       if(profile.hasSelectors&&!setting.source.isEmpty()&&!profile.sources(z).containsKey(setting.source))throw new LocalFailure("Quelle nicht unterstützt",null);
@@ -103,7 +106,7 @@ public final class SceneService extends Service {
   }catch(SceneExecutor.SceneException e){throw e;}
    catch(LocalFailure e){if(e.code!=null)probe(job,e.code,handle,target);throw e;}
    catch(Exception e){
-    Diagnostics.error("WIDGET_LINK_ERROR",e);probe(job,failure,handle,target);
+    Diagnostics.error("WIDGET_LINK_ERROR",e);if(remote)RemoteVpn.invalidate(this,network);probe(job,failure,handle,target);
     throw new LocalFailure(failure.equals(WidgetStatus.DISCOVERY_ERROR)?"Gerätesuche fehlgeschlagen":failure.equals(WidgetStatus.UNREACHABLE)?"Onkyo nicht erreichbar":"Keine Statusantwort",failure);
    }
  }

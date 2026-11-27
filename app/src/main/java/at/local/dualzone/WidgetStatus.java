@@ -30,7 +30,11 @@ final class WidgetStatus {
  }
  static Line compact(Line connection,Line execution){
   String c=connection.text,e=execution.text;
-  if(c.equals("Kein WLAN/LAN"))return new Line("Offline",ERROR);
+  if(c.equals("Kein WLAN/LAN")||c.startsWith("Offline"))return new Line("Offline",ERROR);
+  if(c.startsWith("Kein Internet"))return new Line("Kein Internet",ERROR);
+  if(c.contains("VPN-Freigabe"))return new Line("VPN erlauben",WARN);
+  if(c.contains("Netzwerk gewechselt")||c.contains("neuer Versuch"))return new Line("Verb. fehlt",WARN);
+  if(c.equals("Nicht verbunden"))return new Line("Verbinden",NEUTRAL);
   if(c.startsWith("Demo"))return new Line("Demo",NEUTRAL);
   if(c.contains("…"))return new Line("…",NEUTRAL);
   if(c.contains("nicht gefunden")||c.contains("nicht erreichbar"))return new Line("Onkyo offline",WARN);

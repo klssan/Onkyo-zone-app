@@ -13,7 +13,7 @@ public final class SceneWidget extends AppWidgetProvider {
  private static ConnectivityManager.NetworkCallback monitor;
  static boolean owns(Context c,int id){if(id==AppWidgetManager.INVALID_APPWIDGET_ID)return false;AppWidgetProviderInfo info=AppWidgetManager.getInstance(c).getAppWidgetInfo(id);return info!=null&&new ComponentName(c,SceneWidget.class).equals(info.provider);}
  static Network lan(Context c){
-  if(RemoteVpn.selected())return RemoteVpn.network(c);
+  if(RemoteVpn.selected(c))return RemoteVpn.network(c);
   ConnectivityManager m=c.getSystemService(ConnectivityManager.class);
   if(m==null)return null;Network active=m.getActiveNetwork();if(isLan(m,active))return active;
   for(Network n:m.getAllNetworks())if(isLan(m,n))return n;return null;
@@ -34,7 +34,7 @@ public final class SceneWidget extends AppWidgetProvider {
    @Override public void onLost(Network n){SceneStore.invalidateNetwork(app,n.getNetworkHandle());update();}
    @Override public void onCapabilitiesChanged(Network n,NetworkCapabilities caps){update();}
   };
-  try{m.registerNetworkCallback(new NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET).build(),monitor);}catch(RuntimeException e){monitor=null;Diagnostics.error("WIDGET_MONITOR_ERROR",e);}
+  try{m.registerNetworkCallback(new NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET).addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR).build(),monitor);}catch(RuntimeException e){monitor=null;Diagnostics.error("WIDGET_MONITOR_ERROR",e);}
  }
  static synchronized void stopMonitor(Context c){if(monitor!=null){try{c.getSystemService(ConnectivityManager.class).unregisterNetworkCallback(monitor);}catch(RuntimeException ignored){}monitor=null;}}
  static int color(int tone){switch(tone){case WidgetStatus.GOOD:return 0xff7bd8bc;case WidgetStatus.WARN:return 0xffffbd85;case WidgetStatus.ERROR:return 0xffffa59f;default:return 0xffc2d0d1;}}
@@ -54,6 +54,7 @@ public final class SceneWidget extends AppWidgetProvider {
  static void refresh(Context c,int id){
   if(!owns(c,id))return;Scene scene=SceneStore.get(c,id);Network n=lan(c);String phase=phases.get(id);
   WidgetStatus.Line connection=SceneStore.connection(c,scene!=null&&scene.demo,n==null?0:n.getNetworkHandle(),phase),execution=SceneStore.execution(c,id,phase!=null);
+  if(scene!=null&&!scene.demo&&RemoteVpn.selected(c)&&n==null)connection=new WidgetStatus.Line(phase!=null?phase:RemoteVpn.status(c),phase!=null?WidgetStatus.NEUTRAL:WidgetStatus.WARN);
   Bundle options=AppWidgetManager.getInstance(c).getAppWidgetOptions(id);boolean small=options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,60)<240||options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,60)<180;
   RemoteViews v=small?compact(c,scene,connection,execution):render(c,scene,connection,execution);
   Intent edit=new Intent(c,SceneConfigActivity.class).setAction(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).setData(Uri.parse("onkyo://edit/"+id)).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

@@ -35,11 +35,11 @@ public final class RemoteSetupActivity extends Activity {
   stopButton=button("Fernzugriff trennen",()->work(()->RemoteVpn.stop(),"Fernzugriff getrennt.","Trennen fehlgeschlagen."));
   removeButton=button("Konfiguration löschen",()->new AlertDialog.Builder(this).setMessage("Gespeicherte VPN-Schlüssel auf diesem Handy löschen? Die Verbindung in der FRITZ!Box bei Bedarf ebenfalls entfernen.").setNegativeButton("Abbrechen",null).setPositiveButton("Löschen",(d,n)->work(()->{RemoteVpn.stop();RemoteVault.remove(this);},"Konfiguration gelöscht.","Löschen fehlgeschlagen.")).show());
   text("Nur Onkyo dahoam und die Onkyo-IP nutzen den Tunnel. Andere Apps bleiben unverändert. Keine Portfreigabe. Die Datei enthält private Schlüssel; nach Import aus Downloads löschen.",13);
-  text("Testversion: Fernzugriff hier manuell verbinden. Solange der Tunnel aktiv ist, verwenden App und Szenen-Widgets ihn. Bei einem anderen aktiven Android-VPN muss dieses erst getrennt werden.",13);
+  text("Nach erfolgreicher VPN-Freigabe wird bei Bedarf automatisch verbunden. Im bekannten Heimnetz bevorzugt die App die lokale Verbindung. Bei fehlendem Internet oder einer Störung werden Steuerbefehle nicht nachträglich wiederholt. Bei einem anderen aktiven Android-VPN dieses zuerst trennen.",13);
   refresh();
  }
  void message(String s){new AlertDialog.Builder(this).setMessage(s).setPositiveButton("OK",null).show();}
- void refresh(){state.setText(RemoteVpn.status(this));boolean selected=RemoteVpn.selected();importButton.setEnabled(!busy&&!selected);ip.setEnabled(!busy&&!selected);connectButton.setEnabled(!busy&&!selected&&RemoteVault.exists(this));stopButton.setEnabled(!busy&&selected);removeButton.setEnabled(!busy&&RemoteVault.exists(this));}
+ void refresh(){state.setText(RemoteVpn.status(this));boolean selected=RemoteVpn.selected(this);importButton.setEnabled(!busy&&!selected);ip.setEnabled(!busy&&!selected);connectButton.setEnabled(!busy&&RemoteVault.exists(this));stopButton.setEnabled(!busy&&selected);removeButton.setEnabled(!busy&&RemoteVault.exists(this));}
  interface Work{void run()throws Exception;}
  void work(Work action,String success,String failure){
   busy=true;refresh();state.setText("Bitte warten …");
@@ -47,10 +47,10 @@ public final class RemoteSetupActivity extends Activity {
    runOnUiThread(()->{busy=false;SceneWidget.refreshAll(this);if(!isFinishing()&&!isDestroyed()){refresh();message(done?success:failure);}});
   },"remote-setup").start();
  }
- void connect(){work(()->RemoteVpn.start(this),"Onkyo über Fernzugriff bestätigt. Zurück zur Steuerung.","Keine bestätigte Onkyo-Verbindung. Mobile Daten, MyFRITZ!-Erreichbarkeit, feste Onkyo-IP und Netzwerk-Standby prüfen. VPN wurde getrennt.");}
+ void connect(){work(()->RemoteVpn.start(this),"Onkyo über Fernzugriff bestätigt. Zurück zur Steuerung.","Keine bestätigte Onkyo-Verbindung. Mobile Daten, MyFRITZ!-Erreichbarkeit, feste Onkyo-IP und Netzwerk-Standby prüfen. Automatische Wiederverbindung ist aktiv.");}
  @Override protected void onActivityResult(int request,int result,Intent data){
   super.onActivityResult(request,result,data);
-  if(result!=RESULT_OK)return;
+  if(result!=RESULT_OK){if(request==PERMISSION)message("VPN-Freigabe nicht erteilt. Lokale Steuerung bleibt möglich.");return;}
   if(request==PERMISSION){connect();return;}
   if(request!=IMPORT||data==null||data.getData()==null)return;
   final android.net.Uri uri=data.getData();final String target=ip.getText().toString().trim();
@@ -58,7 +58,7 @@ public final class RemoteSetupActivity extends Activity {
    if(in==null)throw new IOException("Datei fehlt");
    ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buf=new byte[4096];int n;
    while((n=in.read(buf))!=-1){if(out.size()+n>32768)throw new IOException("Datei zu groß");out.write(buf,0,n);}
-   RemoteConfig cfg=RemoteConfig.restrict(new ByteArrayInputStream(out.toByteArray()),target,getPackageName());RemoteVault.save(this,cfg);
+   RemoteConfig cfg=RemoteConfig.restrict(new ByteArrayInputStream(out.toByteArray()),target,getPackageName());RemoteVault.save(this,cfg);RemoteVpn.settings(this).edit().putString("target",cfg.ip).apply();
   }},"Konfiguration sicher importiert. Jetzt Fernzugriff testen.","Import fehlgeschlagen. Einzelgerät-.conf und private Onkyo-IP prüfen.");
  }
 }
