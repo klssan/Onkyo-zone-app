@@ -32,8 +32,8 @@ public final class RemoteSetupActivity extends Activity {
    Intent permission=VpnService.prepare(this);if(permission!=null)startActivityForResult(permission,PERMISSION);else connect();
   });
   state=new TextView(this);state.setTextSize(16);state.setPadding(0,dp(8),0,dp(8));root.addView(state);
-  stopButton=button("Fernzugriff trennen",()->work(()->RemoteVpn.stop(),"Fernzugriff getrennt.","Trennen fehlgeschlagen."));
-  removeButton=button("Konfiguration löschen",()->new AlertDialog.Builder(this).setMessage("Gespeicherte VPN-Schlüssel auf diesem Handy löschen? Die Verbindung in der FRITZ!Box bei Bedarf ebenfalls entfernen.").setNegativeButton("Abbrechen",null).setPositiveButton("Löschen",(d,n)->work(()->{RemoteVpn.stop();RemoteVault.remove(this);},"Konfiguration gelöscht.","Löschen fehlgeschlagen.")).show());
+  stopButton=button("Fernzugriff trennen",()->work(()->RemoteVpn.stop(this),"Fernzugriff getrennt.","Trennen fehlgeschlagen."));
+  removeButton=button("Konfiguration löschen",()->new AlertDialog.Builder(this).setMessage("Gespeicherte VPN-Schlüssel auf diesem Handy löschen? Die Verbindung in der FRITZ!Box bei Bedarf ebenfalls entfernen.").setNegativeButton("Abbrechen",null).setPositiveButton("Löschen",(d,n)->work(()->{RemoteVpn.stop(this);RemoteVault.remove(this);},"Konfiguration gelöscht.","Löschen fehlgeschlagen.")).show());
   text("Nur Onkyo dahoam und die Onkyo-IP nutzen den Tunnel. Andere Apps bleiben unverändert. Keine Portfreigabe. Die Datei enthält private Schlüssel; nach Import aus Downloads löschen.",13);
   text("Nach erfolgreicher VPN-Freigabe wird bei Bedarf automatisch verbunden. Im bekannten Heimnetz bevorzugt die App die lokale Verbindung. Bei fehlendem Internet oder einer Störung werden Steuerbefehle nicht nachträglich wiederholt. Bei einem anderen aktiven Android-VPN dieses zuerst trennen.",13);
   refresh();
