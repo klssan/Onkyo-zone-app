@@ -1,22 +1,87 @@
-name: LAN-only installation diagnostic
+name: Onkyo LAN - Build, UI checks and release
 on:
   push:
     branches: [diagnostic/lan-only]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish a diagnostic APK after successful tests
+        type: boolean
+        default: false
 permissions:
   contents: read
+concurrency:
+  group: onkyo-lan-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  apk:
+  build:
     if: github.ref == 'refs/heads/diagnostic/lan-only'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.preflight.outputs.version }}
+      publish: ${{ steps.preflight.outputs.publish }}
+      signing: ${{ steps.signing.outputs.mode }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Preflight - version and release intent
+        id: preflight
+        env:
+          BEFORE: ${{ github.event.before }}
+          MANUAL_PUBLISH: ${{ inputs.publish }}
+        run: |
+          VERSION=$(sed -nE "s/.*versionName '([0-9]+\.[0-9]+\.[0-9]+)'.*/\1/p" app/build.gradle)
+          CODE=$(sed -nE "s/.*versionCode ([0-9]+).*/\1/p" app/build.gradle)
+          test -n "$VERSION" && test -n "$CODE"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          PUBLISH=false
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            if [ "$MANUAL_PUBLISH" = true ]; then PUBLISH=true; fi
+          elif [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            PUBLISH=true
+          elif ! git diff --quiet "$BEFORE" "$GITHUB_SHA" -- app build.gradle settings.gradle gradle.properties; then
+            PUBLISH=true
+          fi
+          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+          python3 -m py_compile tests/ui_smoke.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+      - name: Validate signing configuration
+        id: signing
+        env:
+          KEYSTORE_B64: ${{ secrets.ONKYO_KEYSTORE_B64 }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A LAN beta may be temporary until the owner sets the permanent secret.
+          # Never fall back to a temporary key after a permanent LAN baseline.
+          gh release list --limit 100 --json tagName --jq '.[].tagName' > /tmp/onkyo-tags
+          PRIOR=""
+          while IFS= read -r tag; do
+            case "$tag" in *-lan-beta.*)
+              body=$(gh release view "$tag" --json body --jq .body)
+              if grep -qx 'Signing: permanent' <<< "$body"; then PRIOR="$tag"; break; fi ;;
+            esac
+          done < /tmp/onkyo-tags
+          echo "prior=$PRIOR" >> "$GITHUB_OUTPUT"
+          if [ -z "$KEYSTORE_B64" ]; then
+            if [ -n "$PRIOR" ]; then
+              echo "::error::Permanent LAN signing key is missing. Restore ONKYO_KEYSTORE_B64; see SIGNING.md."
+              exit 1
+            fi
+            echo "::warning::Temporary debug signing; existing installs may require uninstall. See SIGNING.md."
+            echo "mode=temporary" >> "$GITHUB_OUTPUT"
+          else
+            umask 077
+            mkdir -p "$HOME/.android"
+            printf '%s' "$KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
+            keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey >/dev/null
+            echo "mode=permanent" >> "$GITHUB_OUTPUT"
+          fi
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
@@ -30,19 +95,54 @@ jobs:
           mkdir -p /tmp/onkyo-tests
           javac -d /tmp/onkyo-tests app/src/main/java/at/local/dualzone/{Protocol,Receiver,Discovery,Capabilities,Diagnostics,Scene,SceneExecutor,WidgetStatus,RetryPolicy,RadioControl}.java tests/*.java
           for t in Protocol Receiver Discovery Capabilities Diagnostics WireReplay Scene WidgetStatus Volume RetryPolicy RadioControl; do java -cp /tmp/onkyo-tests at.local.dualzone.${t}Test; done
-      - run: gradle --no-daemon assembleDebug
-      - name: Verify isolation and APK
+      - name: Compile APK
+        run: gradle --no-daemon assembleDebug
+      - name: Verify isolation, package, version and signature
+        env:
+          VERSION: ${{ steps.preflight.outputs.version }}
+          CODE: ${{ steps.preflight.outputs.code }}
+          PRIOR: ${{ steps.signing.outputs.prior }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           APK=app/build/outputs/apk/debug/app-debug.apk
           TOOLS="$ANDROID_HOME/build-tools/35.0.0"
-          "$TOOLS/apksigner" verify --verbose "$APK"
-          "$TOOLS/aapt" dump badging "$APK" | grep -F "package: name='at.local.dualzone'"
+          "$TOOLS/apksigner" verify --verbose --print-certs "$APK" > /tmp/new-cert.txt
+          "$TOOLS/aapt" dump badging "$APK" > /tmp/apk-info.txt
+          grep -F "package: name='at.local.dualzone' versionCode='$CODE' versionName='$VERSION'" /tmp/apk-info.txt
+          if [ -n "$PRIOR" ]; then
+            mkdir -p previous
+            gh release download "$PRIOR" --pattern '*.apk' --output previous/previous.apk
+            "$TOOLS/apksigner" verify --print-certs previous/previous.apk > /tmp/old-cert.txt
+            diff <(grep 'certificate SHA-256 digest:' /tmp/new-cert.txt) <(grep 'certificate SHA-256 digest:' /tmp/old-cert.txt)
+            "$TOOLS/aapt" dump badging previous/previous.apk > /tmp/old-info.txt
+            OLD_CODE=$(sed -nE "s/^package: .*versionCode='([0-9]+)'.*/\1/p" /tmp/old-info.txt)
+            if [ "${{ steps.preflight.outputs.publish }}" = true ]; then test "$CODE" -gt "$OLD_CODE"; fi
+          fi
           python3 - "$APK" <<'PY'
           import sys,zipfile
           with zipfile.ZipFile(sys.argv[1]) as z:
               assert not any(n.startswith('lib/') for n in z.namelist()), 'Unexpected native library'
               assert not any(b'com/wireguard' in z.read(n) for n in z.namelist() if n.endswith('.dex')), 'Unexpected WireGuard code'
           PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lan-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+  ui:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: lan-apk
+          path: app/build/outputs/apk/debug
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: false
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -55,12 +155,43 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: python3 tests/ui_smoke.py
-      - name: Publish temporary diagnostic APK
+      - name: Upload UI failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lan-ui-failure
+          path: ci-diagnostics/
+          if-no-files-found: warn
+  release:
+    needs: [build, ui]
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: lan-apk
+          path: release
+      - name: Publish tested LAN APK
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.build.outputs.version }}
+          SIGNING: ${{ needs.build.outputs.signing }}
         run: |
-          TAG="v0.8.5-lan-beta.${GITHUB_RUN_NUMBER}"
+          TAG="v$VERSION-lan-beta.${GITHUB_RUN_NUMBER}"
           APK="Onkyo-dahoam-$TAG.apk"
-          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
-          gh release create "$TAG" "$APK" --target "$GITHUB_SHA" --prerelease --title "Onkyo dahoam $TAG (installation diagnostic)" --notes "Temporary debug signing, no WireGuard or native libraries, Compact dashboard polish, original control positions, active power tint, collapsed off-zone volume, paired tone controls. JVM, package verification and Android UI smoke checks passed. Diagnostic only; not a permanent update baseline. LAN only."
+          cp release/app-debug.apk "$APK"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::notice::Release $TAG already exists; not overwriting a published APK."
+            exit 0
+          fi
+          if [ "$SIGNING" = permanent ]; then
+            NOTE="Dedicated permanent signing key. First permanent LAN install may require uninstall of a temporary build."
+          else
+            NOTE="Temporary debug signing; existing installs may require uninstall, which removes settings and widgets."
+          fi
+          printf 'Signing: %s\n\n%s\n\nJVM tests, APK isolation and identity checks, signature verification and Android UI smoke tests passed. LAN only; no WireGuard. Real receiver behavior requires hardware testing.\n' "$SIGNING" "$NOTE" > /tmp/lan-notes
+          gh release create "$TAG" "$APK" --target "$GITHUB_SHA" --prerelease --title "Onkyo dahoam $TAG (LAN beta)" --notes-file /tmp/lan-notes
