@@ -15,14 +15,6 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
    require(c.getApplicationInfo().loadLabel(c.getPackageManager()).toString().equals("Onkyo dahoam"),"app label");
    require(c.getApplicationInfo().icon==R.drawable.dz_logo,"launcher icon");
    require(c.getDrawable(R.drawable.dz_logo)!=null,"logo drawable");
-   String fakeKey=new com.wireguard.crypto.KeyPair().getPrivateKey().toBase64();
-   String fakePub=new com.wireguard.crypto.KeyPair().getPublicKey().toBase64();
-   String conf="[Interface]\nPrivateKey = "+fakeKey+"\nAddress = 192.168.178.201/32\nDNS = 192.168.178.1\n[Peer]\nPublicKey = "+fakePub+"\nEndpoint = example.invalid:51820\nAllowedIPs = 0.0.0.0/0, ::/0\n";
-   RemoteConfig remote=RemoteConfig.restrict(new java.io.ByteArrayInputStream(conf.getBytes(java.nio.charset.StandardCharsets.UTF_8)),"192.168.178.42",c.getPackageName());
-   require(remote.config.getPeers().get(0).getAllowedIps().size()==1&&remote.config.getPeers().get(0).getAllowedIps().iterator().next().getMask()==32,"receiver only route");
-   require(remote.config.getInterface().getIncludedApplications().contains(c.getPackageName())&&remote.config.getInterface().getDnsServers().isEmpty(),"app only without DNS");
-   RemoteVault.save(c,remote);require(RemoteVault.load(c).ip.equals(remote.ip),"encrypted import roundtrip");RemoteVault.remove(c);
-   try{RemoteConfig.restrict(new java.io.ByteArrayInputStream(conf.getBytes(java.nio.charset.StandardCharsets.UTF_8)),"8.8.8.8",c.getPackageName());throw new AssertionError("public IP accepted");}catch(java.io.IOException expected){} 
    Scene scene=new Scene("FM4 Küche","Radio",new Scene.Zone(Scene.KEEP,"",-1,-1,""),new Scene.Zone(Scene.ON,"24",40,4,""),false,false);
    WidgetStatus.Line last=WidgetStatus.execution("Bestätigt",now,false,0,false);
    RemoteViews views=SceneWidget.render(c,scene,WidgetStatus.connection(false,false,WidgetStatus.REACHABLE,now,true,now,null),last);

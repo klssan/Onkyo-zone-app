@@ -249,9 +249,9 @@ public class MainActivity extends Activity {
       Toast.makeText(this,"Homescreen lange drücken → Widgets → Onkyo dahoam",Toast.LENGTH_LONG).show();
    }).setNegativeButton("Schließen",null).show();
  }
- void connectionMenu(){new AlertDialog.Builder(this).setTitle("Verbindung & Diagnose").setItems(new String[]{"Automatisch suchen","IP manuell eingeben","Demo","Diagnosebericht","Homescreen-Widgets","Fernzugriff einrichten"},(d,n)->{
+ void connectionMenu(){new AlertDialog.Builder(this).setTitle("Verbindung & Diagnose").setItems(new String[]{"Automatisch suchen","IP manuell eingeben","Demo","Diagnosebericht","Homescreen-Widgets"},(d,n)->{
   if(n==0){Diagnostics.event("UI","automatic discovery requested");demo=false;manual=false;deviceId="";prefs.edit().putBoolean("manual",false).remove("deviceId").apply();SceneWidget.refreshAll(this);disconnect();tick();}
-  else if(n==1)connectionDialog();else if(n==2)startDemo();else if(n==3)diagnosticsDialog();else if(n==4)widgetMenu();else startActivity(new Intent(this,RemoteSetupActivity.class));
+  else if(n==1)connectionDialog();else if(n==2)startDemo();else if(n==3)diagnosticsDialog();else if(n==4)widgetMenu();
  }).show();}
  void diagnosticsDialog(){
   Diagnostics.event("UI","diagnostics opened");

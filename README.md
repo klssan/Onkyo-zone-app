@@ -41,3 +41,6 @@ Radio 3×2: station up/down cycles saved FM presets, or uses tuner up/down when 
 
 ### 0.8.1 preview 1 — One page
 Fixed compact header and both zone controls, source and power in one row. Global relative volume applies to all powered zones, independent of source; no change to off zones. Independent scrollable detail accordions under both zones, initially collapsed, with mute, supported tone controls and living-room listening mode. Media selection stays in main panels. Widget actions retain the same receiver-confirmed state and offline guards. Zone 2 tone controls only appear if explicitly reported by receiver profile. Prior preview 3 compile error (missing Bundle import) corrected. Physical receiver/VPN/automatic tuner seek validation remains outstanding.
+
+## LAN-only installation diagnostic
+Based on the exact 0.8.1 preview, retaining dashboard and widgets, excluding WireGuard, remote setup, native libraries and remote instrumentation. Temporary debug signature is deliberate for this one isolation test; not the permanent release channel. The later 0.8.2 scene editor is not included to avoid confounding the comparison.
