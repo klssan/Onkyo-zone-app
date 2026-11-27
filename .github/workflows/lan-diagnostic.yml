@@ -48,7 +48,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          TAG="v0.8.2-lan-beta.${GITHUB_RUN_NUMBER}"
+          TAG="v0.8.3-lan-beta.${GITHUB_RUN_NUMBER}"
           APK="Onkyo-dahoam-$TAG.apk"
           cp app/build/outputs/apk/debug/app-debug.apk "$APK"
-          gh release create "$TAG" "$APK" --target "$GITHUB_SHA" --prerelease --title "Onkyo dahoam $TAG (installation diagnostic)" --notes "Temporary debug signing, no WireGuard or native libraries, LAN dashboard, fast volume-only path, cached verified receiver profile, coalesced volume taps. JVM and package verification passed; no emulator run. Diagnostic only; not a permanent update baseline. LAN only."
+          gh release create "$TAG" "$APK" --target "$GITHUB_SHA" --prerelease --title "Onkyo dahoam $TAG (installation diagnostic)" --notes "Temporary debug signing, no WireGuard or native libraries, LAN dashboard, early known-device discovery, adaptive status polling, active-only volume, streamlined radio preset changes. JVM and package verification passed; no emulator run. Diagnostic only; not a permanent update baseline. LAN only."

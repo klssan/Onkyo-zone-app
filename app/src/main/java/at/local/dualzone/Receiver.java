@@ -31,7 +31,20 @@ final class Receiver implements AutoCloseable {
    finally{close();}
   },"eISCP-reader").start();
  }
- void query(){expire();if(!pollPending.compareAndSet(false,true))return;submit(true,new String[]{"PWRQSTN","ZPWQSTN","SLIQSTN","SLZQSTN","MVLQSTN","ZVLQSTN","NMSQSTN","AMTQSTN","ZMTQSTN"});}
+ void query(){query("PWRQSTN","ZPWQSTN");}
+ void query(String... commands){expire();if(!pollPending.compareAndSet(false,true))return;submit(true,commands);}
+ static String[] dashboardQueries(Boolean main,Boolean second,String a,String b){
+  LinkedHashSet<String> q=new LinkedHashSet<>();q.add("PWRQSTN");q.add("ZPWQSTN");
+  boolean m=Boolean.TRUE.equals(main),z=Boolean.TRUE.equals(second);
+  if(m||z&&"80".equals(b))q.add("SLIQSTN");
+  if(z)q.add("SLZQSTN");
+  if(m){q.add("MVLQSTN");q.add("AMTQSTN");}
+  if(z){q.add("ZVLQSTN");q.add("ZMTQSTN");}
+  if(m&&"2B".equals(a)||z&&("2B".equals(b)||"80".equals(b)&&"2B".equals(a)))q.add("NMSQSTN");
+  if(m&&("24".equals(a)||"25".equals(a))||z&&"80".equals(b)&&("24".equals(a)||"25".equals(a))){q.add("PRSQSTN");q.add("TUNQSTN");}
+  if(z&&("24".equals(b)||"25".equals(b))){q.add("PRZQSTN");q.add("TUZQSTN");}
+  return q.toArray(new String[0]);
+ }
  void send(String... commands){submit(false,commands);}
  // At most one queued volume write per zone; a running write may have one successor.
  synchronized void sendVolume(String command){
@@ -46,7 +59,7 @@ final class Receiver implements AutoCloseable {
  }
  private void writeCommands(boolean poll,String[] commands){
    try{Socket s=socket;if(s==null||!s.isConnected()||s.isClosed())throw new IOException();
-    for(String c:commands){if(closed)return;byte[] frame=Protocol.encode(c);track(c);Diagnostics.command("TX",c);s.getOutputStream().write(frame);s.getOutputStream().flush();Thread.sleep(120);}
+    int index=0;for(String c:commands){if(closed)return;if(poll&&index++>=2&&!writer.getQueue().isEmpty()){Diagnostics.event("QUEUE","yield poll to queued action");break;}byte[] frame=Protocol.encode(c);track(c);Diagnostics.command("TX",c);s.getOutputStream().write(frame);s.getOutputStream().flush();Thread.sleep(120);}
    }catch(Exception e){if(!closed){Diagnostics.error("TCP_WRITE_ERROR",e);listener.status("Senden fehlgeschlagen",false);close();}}finally{if(poll)pollPending.set(false);}
  }
  private synchronized void track(String c){expire();if(c.length()<4)return;String k=c.substring(0,3);if(!c.endsWith("QSTN")||!pending.containsKey(k))pending.put(k,new Pending(c));}

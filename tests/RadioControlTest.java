@@ -17,6 +17,9 @@ public class RadioControlTest {
   s.on[0]=true;s.source[0]="12";RadioControl.adjust(s,w,-1);check(writes.equals(Arrays.asList("MVL31","ZVL60")));writes.clear();
   RadioControl.toggle(s,w,c,1);check(writes.equals(Arrays.asList("ZPW00")));writes.clear();
   s.on[0]=false;s.on[1]=false;RadioControl.adjust(s,w,1);check(writes.isEmpty());
+  List<String> queries=new ArrayList<>();
+  SceneExecutor.Wire standby=new SceneExecutor.Wire(){public String query(String prefix){queries.add(prefix);if(prefix.equals("PWR")||prefix.equals("ZPW"))return "00";if(prefix.equals("SLI")||prefix.equals("SLZ"))return "24";throw new AssertionError(prefix);}public void set(String a,String b,String c){throw new AssertionError(a);}};
+  RadioControl.State off=RadioControl.read(standby,c);check(off.raw[0]==-1&&off.raw[1]==-1&&!queries.contains("MVL")&&!queries.contains("ZVL"));
   System.out.println("Radio preset wrap, tuning fallback, volume 45, active-only volume passed");
  }
 }

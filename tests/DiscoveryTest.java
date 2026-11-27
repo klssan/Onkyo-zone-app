@@ -9,6 +9,7 @@ public class DiscoveryTest {
   if(!Discovery.broadcast(InetAddress.getByName("192.168.17.23"),23).getHostAddress().equals("192.168.17.255"))throw new AssertionError();
   byte[] q=Discovery.packet("!xECNQSTN");if(q.length!=27||q[17]!='x')throw new AssertionError();
   byte[] bad=Discovery.packet("!1ECNTX-NR656/99999/XX");if(Discovery.parse(bad,bad.length,InetAddress.getLoopbackAddress())!=null)throw new AssertionError();
+  if(!Discovery.known(d,"ABCDEF123456")||Discovery.known(d,"")||Discovery.known(d,"different"))throw new AssertionError("known identity");
   System.out.println("Discovery tests passed");
  }
 }

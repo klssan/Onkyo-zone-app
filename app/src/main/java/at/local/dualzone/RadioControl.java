@@ -24,11 +24,14 @@ final class RadioControl {
   for(int i=0;i<2;i++){String power=w.query(POWER[i]);if(!power.equals("00")&&!power.equals("01"))throw new IOException("Zonenstatus unbekannt");s.on[i]=power.equals("01");}
   for(int i=0;i<2;i++){
    s.source[i]=optional(w,SOURCE[i]);if(s.on[i]&&!s.source[i].matches("[0-9A-Fa-f]{2}"))throw new IOException("Quelle unbekannt");
-   s.raw[i]=Protocol.volume(optional(w,VOLUME[i]));s.scale[i]=c.volumeReported[i]?c.volumeScale[i]:s.raw[i]>100?2:1;
+   s.raw[i]=s.on[i]?Protocol.volume(optional(w,VOLUME[i])):-1;s.scale[i]=c.volumeReported[i]?c.volumeScale[i]:s.raw[i]>100?2:1;
    s.max[i]=Protocol.maxVolume(c.volumeMax[i],s.scale[i],s.raw[i]);
   }
-  int tuner=s.tuner();if(tuner>=0){String v=optional(w,PRESET[tuner]);if(v.matches("[0-9A-Fa-f]{2}")){int n=Integer.parseInt(v,16);if(n>=1&&n<=40)s.preset=n;}s.frequency=optional(w,TUNE[tuner]);}
-  return s;
+  readTuner(s,w);return s;
+ }
+ static void readTuner(State s,SceneExecutor.Wire w)throws IOException{
+  int tuner=s.tuner();s.preset=-1;s.frequency="";
+  if(tuner>=0){String v=optional(w,PRESET[tuner]);if(v.matches("[0-9A-Fa-f]{2}")){int n=Integer.parseInt(v,16);if(n>=1&&n<=40)s.preset=n;}s.frequency=optional(w,TUNE[tuner]);}
  }
  static void startFM(State s,SceneExecutor.Wire w,Capabilities c,int i)throws IOException{
   if(c.hasSelectors&&!c.sources(i).containsKey("24"))throw new IOException("FM nicht verfügbar");
@@ -49,13 +52,14 @@ final class RadioControl {
   TreeSet<Integer> set=new TreeSet<>();for(Capabilities.Preset p:c.presets)if(p.band==1)set.add(p.number);
   if(set.isEmpty())return -1;Integer next=direction>0?set.higher(current):set.lower(current);return next==null?(direction>0?set.first():set.last()):next;
  }
- static void step(State s,SceneExecutor.Wire w,Capabilities c,int direction)throws IOException{
+ static State step(State s,SceneExecutor.Wire w,Capabilities c,int direction)throws IOException{
   if(s.tuner()<0){startFM(s,w,c,1);s=read(w,c);}
   int i=s.tuner();if(i<0)throw new IOException("FM nicht bestätigt");
   int next=nextPreset(c,s.preset,direction);
   if(next>0){String hex=Protocol.hex(next);if(next!=s.preset)w.set(PRESET[i]+hex,PRESET[i],hex);}
   else if(!c.hasPresets&&s.preset>0){w.set(PRESET[i]+(direction>0?"UP":"DOWN"),PRESET[i],null);}
   else{w.set(TUNE[i]+(direction>0?"UP":"DOWN"),TUNE[i],null);}
+  return s;
  }
  static State readVolumes(SceneExecutor.Wire w,Capabilities c)throws IOException{
   State s=new State();

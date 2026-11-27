@@ -31,7 +31,7 @@ public final class SceneService extends Service {
   running=true;checking=checkOnly;radio=isRadio;radioAction=action;volumePending.set(0);if(volumeAction(action))enqueueVolume(action);activeId=id;final int job=++token;
   SceneWidget.observeNetwork(this);
   if(isRadio)RadioWidget.phase(this,"Verbinden …");else SceneWidget.phase(this,id,checkOnly?"Verbindung wird geprüft …":"Szene wird vorbereitet …");
-  Diagnostics.open(getFilesDir());Diagnostics.event("WIDGET","start check="+checkOnly+" demo="+(!isRadio&&scene.demo));
+  Diagnostics.open(getFilesDir());Diagnostics.event("WIDGET","start action="+(isRadio?action:checkOnly?"CHECK":"SCENE")+" demo="+(!isRadio&&scene.demo));
   worker=new Thread(()->{
    String result;
    try{
@@ -73,7 +73,7 @@ public final class SceneService extends Service {
     ArrayList<InetAddress> targets=new ArrayList<>();LinkProperties lp=getSystemService(ConnectivityManager.class).getLinkProperties(network);
     if(lp!=null)for(LinkAddress l:lp.getLinkAddresses())if(l.getAddress() instanceof Inet4Address)targets.add(Discovery.broadcast(l.getAddress(),l.getPrefixLength()));
     String deviceId=config.getString("deviceId","");ArrayList<Discovery.Device> matches=new ArrayList<>();
-    try(DatagramSocket udp=new DatagramSocket(null)){network.bindSocket(udp);udp.bind(new InetSocketAddress(0));for(Discovery.Device d:Discovery.find(udp,targets,1800))if(d.model.equalsIgnoreCase("TX-NR656")&&d.port==60128&&(deviceId.isEmpty()||deviceId.equals(d.id)))matches.add(d);}
+    try(DatagramSocket udp=new DatagramSocket(null)){network.bindSocket(udp);udp.bind(new InetSocketAddress(0));for(Discovery.Device d:Discovery.find(udp,targets,1800,deviceId))if(d.model.equalsIgnoreCase("TX-NR656")&&d.port==60128&&(deviceId.isEmpty()||deviceId.equals(d.id)))matches.add(d);}
     if(matches.size()!=1)throw new LocalFailure(matches.isEmpty()?"Onkyo nicht gefunden":"Receiver in App auswählen",WidgetStatus.NOT_FOUND);
     if(!target.equals(SceneStore.target(this)))throw new LocalFailure("Receiver-Auswahl geändert",null);
     Discovery.Device selected=matches.get(0);ip=selected.ip;config.edit().putString("ip",ip).putString("deviceId",selected.id).apply();target=SceneStore.target(this);
@@ -123,7 +123,7 @@ public final class SceneService extends Service {
     phase(job,id,"Onkyo wird gesucht …");
     ArrayList<InetAddress> targets=new ArrayList<>();LinkProperties props=cm.getLinkProperties(network);
     if(props!=null)for(LinkAddress l:props.getLinkAddresses())if(l.getAddress() instanceof Inet4Address)targets.add(Discovery.broadcast(l.getAddress(),l.getPrefixLength()));
-    List<Discovery.Device> found;try(DatagramSocket socket=new DatagramSocket(null)){network.bindSocket(socket);socket.bind(new InetSocketAddress(0));found=Discovery.find(socket,targets,1800);}
+    List<Discovery.Device> found;try(DatagramSocket socket=new DatagramSocket(null)){network.bindSocket(socket);socket.bind(new InetSocketAddress(0));found=Discovery.find(socket,targets,1800,deviceId);}
     ArrayList<Discovery.Device> matches=new ArrayList<>();
     for(Discovery.Device d:found)if(d.model.equalsIgnoreCase("TX-NR656")&&d.port==60128&&(deviceId.isEmpty()||deviceId.equals(d.id)))matches.add(d);
     if(matches.size()!=1)throw new LocalFailure(matches.isEmpty()?"Onkyo nicht gefunden":"Receiver in App auswählen",matches.isEmpty()?WidgetStatus.NOT_FOUND:WidgetStatus.CHOOSE);
@@ -138,25 +138,26 @@ public final class SceneService extends Service {
     activeSocket=socket;socket.connect(new InetSocketAddress(ip,60128),3000);socket.setTcpNoDelay(true);failure=WidgetStatus.NO_REPLY;
     phase(job,id,"Gerätestatus wird geprüft …");
     try(SceneExecutor.SocketWire wire=new SceneExecutor.SocketWire(socket,30000)){
-     Capabilities profile=null;
-     try{String raw=wire.query("NRI");profile=Capabilities.parse(raw);if(profile.model.equalsIgnoreCase("TX-NR656"))VolumeProfile.save(this,network,ip,raw);}catch(Exception e){Diagnostics.error("WIDGET_PROFILE_UNAVAILABLE",e);}
+     Capabilities profile=radio&&!checkOnly?VolumeProfile.get(this,network,ip):null;
+     try{if(profile==null){String raw=wire.query("NRI");profile=Capabilities.parse(raw);if(profile.model.equalsIgnoreCase("TX-NR656"))VolumeProfile.save(this,network,ip,raw);}}catch(Exception e){Diagnostics.error("WIDGET_PROFILE_UNAVAILABLE",e);}
      if(profile!=null&&!profile.model.equalsIgnoreCase("TX-NR656"))throw new LocalFailure("Falsches Receiver-Modell",WidgetStatus.WRONG_MODEL);
      if(profile==null&&manual)throw new LocalFailure("Geräteprofil nicht bestätigt",WidgetStatus.PROFILE_UNKNOWN);
-     SceneExecutor.checkReceiver(wire);probe(job,WidgetStatus.REACHABLE,handle,target);
+     if(!radio)SceneExecutor.checkReceiver(wire);probe(job,WidgetStatus.REACHABLE,handle,target);
      if(radio){
       if(profile==null)throw new LocalFailure("Geräteprofil nicht bestätigt",WidgetStatus.PROFILE_UNKNOWN);
       RadioControl.State state=RadioControl.read(wire,profile);
       if(!target.equals(SceneStore.target(this))||remote&&!network.equals(RemoteVpn.network(this)))throw new LocalFailure("Verbindung geändert · erneut tippen",null);
       switch(radioAction){
-       case RadioWidget.UP:RadioControl.step(state,wire,profile,1);break;
-       case RadioWidget.DOWN:RadioControl.step(state,wire,profile,-1);break;
+       case RadioWidget.UP:state=RadioControl.step(state,wire,profile,1);break;
+       case RadioWidget.DOWN:state=RadioControl.step(state,wire,profile,-1);break;
        case RadioWidget.LIVING:RadioControl.toggle(state,wire,profile,0);break;
        case RadioWidget.DINING:RadioControl.toggle(state,wire,profile,1);break;
        case RadioWidget.PLUS:RadioControl.adjust(state,wire,1);break;
        case RadioWidget.MINUS:RadioControl.adjust(state,wire,-1);break;
        default:break;
       }
-      RadioWidget.store(this,RadioControl.read(wire,profile),profile,network);return 0;
+      if(RadioWidget.UP.equals(radioAction)||RadioWidget.DOWN.equals(radioAction))RadioControl.readTuner(state,wire);else if(!checkOnly)state=RadioControl.read(wire,profile);
+      RadioWidget.store(this,state,profile,network);return 0;
      }
      if(checkOnly)return 0; // Read-only check: no source, volume or power writes.
      if(!target.equals(SceneStore.target(this))||remote&&!network.equals(RemoteVpn.network(this)))throw new LocalFailure("Verbindung geändert · erneut tippen",null);
