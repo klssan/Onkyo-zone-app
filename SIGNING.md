@@ -1,16 +1,18 @@
-# Permanent APK signing
-The first release with ONKYO_KEYSTORE_B64 configured is the permanent-signing baseline. The previous hosted-runner debug keys were ephemeral and cannot be recovered from APK certificates. Existing installs may require a final uninstall before installing that baseline. Back up or note scene settings first; uninstall removes app data and widgets.
+# Permanent signing and release channels
 
-## One-time setup (Windows PowerShell, JDK and GitHub CLI installed)
-Run on a trusted computer; keep the keystore backed up privately. Never commit it or paste it into chat. Use a new dedicated key for this app only.
+Create one dedicated keystore on a trusted Windows PC with a JDK. Keep a private offline backup; never regenerate or share it after the first permanent release.
 
 ```powershell
 keytool -genkeypair -v -keystore onkyo-signing.jks -storetype JKS -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 3072 -validity 10000 -dname "CN=Onkyo dahoam"
-gh auth login
-[Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path .\onkyo-signing.jks).Path)) | gh secret set ONKYO_KEYSTORE_B64 --repo klssan/Onkyo-zone-app
-gh workflow run build.yml --repo klssan/Onkyo-zone-app
+[Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path .\onkyo-signing.jks).Path)) | Set-Clipboard
 ```
 
-The Android debug signing configuration expects the alias and passwords above; secrecy is provided by the dedicated keystore bytes in GitHub's encrypted secret storage, not by the standard debug password. Restrict repository write access, keep the file offline/private and do not reuse it for other apps. Never regenerate the key once the first permanent release is published. Alternatively add the base64 content directly via Settings > Secrets and variables > Actions > New repository secret, without exposing it publicly.
+Add the clipboard content as repository Actions secret ONKYO_KEYSTORE_B64 at https://github.com/klssan/Onkyo-zone-app/settings/secrets/actions. Clear the clipboard afterward. The conventional debug alias/passwords are required by the Android debug build; the key bytes are the secret. Never put the key into a commit or chat.
 
-Before the permanent baseline, CI may publish explicitly marked temporary debug builds. Once a permanent release exists, CI refuses to publish without this secret. After the baseline, CI compares the new APK's certificate and versionCode against the previous permanent release, then installs the old APK and updates it in the emulator without uninstalling, verifying an app-data marker survives. Keep package ID at.local.dualzone unchanged and increase versionCode and versionName for each release.
+On the active feature/remote-wireguard branch, .github/workflows/remote-preview.yml now requires this secret before publishing. Push = beta; dispatch with channel rc = full emulator tests; dispatch with channel stable and exact RC tag = promote identical verified APK after manual hardware acceptance. Beta verifies JVM, compilation, package ID and signature. RC additionally tests UI, widgets and upgrade from the previous permanent release (if any). Stable copies exactly the RC bytes; no rebuild. All new beta/RC versions have monotonically increasing versionCode (1000 + workflow run number); Android package at.local.dualzone remains fixed. No permanent release is allowed with a changed signing certificate. A first installation over a temporary debug build may require uninstall once, which deletes app data, imported VPN settings and widgets. Re-import the WireGuard file afterward. Existing stable main branch is legacy; do not publish from it while this channel is active. When merging, unify the workflows rather than resetting versionCode.
+
+With GitHub CLI installed and authenticated, use:
+```powershell
+gh workflow run remote-preview.yml --repo klssan/Onkyo-zone-app --ref feature/remote-wireguard -f channel=beta
+gh workflow run remote-preview.yml --repo klssan/Onkyo-zone-app --ref feature/remote-wireguard -f channel=rc
+```

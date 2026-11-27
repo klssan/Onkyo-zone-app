@@ -1,16 +1,33 @@
-name: WireGuard preview checks
+name: Onkyo Beta / RC / Stable
 on:
   push:
     branches: [feature/remote-wireguard]
   workflow_dispatch:
+    inputs:
+      channel:
+        description: Beta (fast), RC (full checks) or Stable (promote tested RC)
+        type: choice
+        options: [beta, rc, stable]
+        default: beta
+      rc_tag:
+        description: Existing RC tag to promote (only for stable)
+        type: string
+        required: false
 permissions:
   contents: read
+concurrency:
+  group: onkyo-signed-channel
+  cancel-in-progress: false
 jobs:
-  preview:
-    if: github.ref == 'refs/heads/feature/remote-wireguard'
+  build:
+    if: github.ref == 'refs/heads/feature/remote-wireguard' && inputs.channel != 'stable'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      CHANNEL: ${{ inputs.channel || 'beta' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -25,18 +42,80 @@ jobs:
           packages: 'platform-tools'
           log-accepted-android-sdk-licenses: false
       - run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Require permanent signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ONKYO_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Set ONKYO_KEYSTORE_B64 once; see SIGNING.md. No temporary signed release will be published."
+            exit 1
+          fi
+          umask 077
+          mkdir -p "$HOME/.android"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey >/dev/null
+      - name: Allocate release version
+        run: |
+          VERSION=$(sed -nE "s/.*versionName '([0-9]+\.[0-9]+\.[0-9]+)'.*/\1/p" app/build.gradle)
+          test -n "$VERSION"
+          CODE=$((1000 + GITHUB_RUN_NUMBER))
+          TAG="v$VERSION-$CHANNEL.$GITHUB_RUN_NUMBER"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "ONKYO_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::Release already published. Dispatch a fresh run."
+            exit 1
+          fi
       - name: JVM regression and retry tests
         run: |
           mkdir -p /tmp/onkyo-tests
           javac -d /tmp/onkyo-tests app/src/main/java/at/local/dualzone/{Protocol,Receiver,Discovery,Capabilities,Diagnostics,Scene,SceneExecutor,WidgetStatus,RetryPolicy,RadioControl}.java tests/*.java
           for t in Protocol Receiver Discovery Capabilities Diagnostics WireReplay Scene WidgetStatus Volume RetryPolicy RadioControl; do java -cp /tmp/onkyo-tests at.local.dualzone.${t}Test; done
-      - run: gradle --no-daemon assembleDebug assembleDebugAndroidTest
+      - name: Build signed APK
+        run: |
+          if [ "$CHANNEL" = rc ]; then
+            gradle --no-daemon assembleDebug assembleDebugAndroidTest
+          else
+            gradle --no-daemon assembleDebug
+          fi
+      - name: Verify package identity, certificate and previous release
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          "$TOOLS/aapt" dump badging "$APK" > /tmp/apk-info.txt
+          grep -F "package: name='at.local.dualzone' versionCode='$ONKYO_VERSION_CODE' versionName='$VERSION'" /tmp/apk-info.txt
+          grep -F "application-label:'Onkyo dahoam'" /tmp/apk-info.txt
+          "$TOOLS/apksigner" verify --print-certs "$APK" > /tmp/new-cert.txt
+          gh api --paginate --slurp "repos/$GH_REPO/releases?per_page=100" > /tmp/releases.json
+          python3 - <<'PY' > /tmp/previous-tag
+          import json,re
+          releases=[r for page in json.load(open('/tmp/releases.json')) for r in page if not r['draft'] and 'Signing: permanent' in (r['body'] or '').splitlines()]
+          def code(r):
+              m=re.search(r'^VersionCode: (\d+)$',r['body'] or '',re.M)
+              return int(m.group(1)) if m else 0
+          if releases:
+              print(max(releases,key=lambda r:(code(r),r['published_at'] or ''))['tag_name'])
+          PY
+          PREVIOUS=$(cat /tmp/previous-tag)
+          if [ -n "$PREVIOUS" ]; then
+            mkdir -p previous
+            gh release download "$PREVIOUS" --pattern '*.apk' --output previous/previous.apk
+            "$TOOLS/apksigner" verify --print-certs previous/previous.apk > /tmp/old-cert.txt
+            diff <(grep 'certificate SHA-256 digest:' /tmp/new-cert.txt) <(grep 'certificate SHA-256 digest:' /tmp/old-cert.txt)
+            "$TOOLS/aapt" dump badging previous/previous.apk > /tmp/old-info.txt
+            grep -F "package: name='at.local.dualzone'" /tmp/old-info.txt
+            OLD_CODE=$(sed -nE "s/^package: .*versionCode='([0-9]+)'.*/\1/p" /tmp/old-info.txt)
+            test "$ONKYO_VERSION_CODE" -gt "$OLD_CODE"
+          fi
       - name: Enable KVM
+        if: env.CHANNEL == 'rc'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - uses: reactivecircus/android-emulator-runner@v2
+        if: env.CHANNEL == 'rc'
         with:
           api-level: 34
           arch: x86_64
@@ -45,15 +124,57 @@ jobs:
           script: python3 tests/run_android_checks.py
       - uses: actions/upload-artifact@v4
         with:
-          name: Onkyo-dahoam-wireguard-preview
+          name: Onkyo-dahoam-signed
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-      - name: Publish verified preview APK
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+      - name: Publish signed prerelease
         run: |
-          APK=app/build/outputs/apk/debug/app-debug.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
-          cp "$APK" Onkyo-dahoam-v0.8.1-preview.1.apk
-          gh release create v0.8.1-preview.1 Onkyo-dahoam-v0.8.1-preview.1.apk --target "${{ github.sha }}" --prerelease --title "Onkyo dahoam 0.8.1 One Page preview 1" --notes "Preview only. JVM and emulator checks passed; actual FRITZ!Box/VPN, LTE switching and Android widget background behavior require real-device testing. Temporary debug signature; uninstall may be required. One-page dashboard with independent expandable details, header group volume, radio 3×2 and universal volume 2×1; initial FM zone volume 45. Tuner seek behavior requires hardware verification."
+          APK="Onkyo-dahoam-$TAG.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
+          HASH=$(sha256sum "$APK" | cut -d' ' -f1)
+          printf 'Signing: permanent\nChannel: %s\nVersionCode: %s\nCommit: %s\nSHA256: %s\n\n' "$CHANNEL" "$ONKYO_VERSION_CODE" "$GITHUB_SHA" "$HASH" > /tmp/notes
+          if [ "$CHANNEL" = rc ]; then
+            echo "JVM, APK identity, signature and Android emulator checks passed. In-place update tested when a previous permanent release exists. Physical receiver/VPN/seek behavior still requires hardware validation." >> /tmp/notes
+          else
+            echo "Fast beta: JVM tests, compilation, identity and signature checks passed. Emulator UI and in-place update tests deferred to RC." >> /tmp/notes
+          fi
+          gh release create "$TAG" "$APK" --target "$GITHUB_SHA" --prerelease --title "Onkyo dahoam $TAG" --notes-file /tmp/notes
+  promote:
+    if: github.ref == 'refs/heads/feature/remote-wireguard' && inputs.channel == 'stable'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RC_TAG: ${{ inputs.rc_tag }}
+    steps:
+      - name: Promote exact tested RC APK
+        run: |
+          [[ "$RC_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ ]]
+          TAG=${RC_TAG%-rc.*}
+          if gh release view "$TAG" >/dev/null 2>&1; then echo "::error::Stable version already exists"; exit 1; fi
+          gh release view "$RC_TAG" --json body --jq .body > /tmp/notes
+          grep -qx 'Signing: permanent' /tmp/notes
+          grep -qx 'Channel: rc' /tmp/notes
+          COMMIT=$(sed -n 's/^Commit: //p' /tmp/notes)
+          CODE=$(sed -n 's/^VersionCode: //p' /tmp/notes)
+          HASH=$(sed -n 's/^SHA256: //p' /tmp/notes)
+          [[ "$COMMIT" =~ ^[0-9a-f]{40}$ && "$CODE" =~ ^[0-9]+$ && "$HASH" =~ ^[0-9a-f]{64}$ ]]
+          APK="Onkyo-dahoam-$TAG.apk"
+          gh release download "$RC_TAG" --pattern '*.apk' --output "$APK"
+          printf '%s  %s\n' "$HASH" "$APK" | sha256sum -c -
+          gh api --paginate --slurp "repos/$GH_REPO/releases?per_page=100" > /tmp/releases.json
+          python3 - "$CODE" <<'PY'
+          import json,re,sys
+          for page in json.load(open('/tmp/releases.json')):
+              for r in page:
+                  if r['draft']: continue
+                  body=r['body'] or ''
+                  m=re.search(r'^VersionCode: (\d+)$',body,re.M)
+                  if 'Signing: permanent' in body.splitlines() and m and int(m.group(1))>int(sys.argv[1]):
+                      raise SystemExit('A newer signed build exists; promote a fresh RC instead.')
+          PY
+          sed -i 's/^Channel: rc$/Channel: stable/' /tmp/notes
+          printf '\nPromoted without rebuild from %s after manual hardware acceptance. APK bytes identical.\n' "$RC_TAG" >> /tmp/notes
+          gh release create "$TAG" "$APK" --target "$COMMIT" --title "Onkyo dahoam $TAG" --notes-file /tmp/notes
