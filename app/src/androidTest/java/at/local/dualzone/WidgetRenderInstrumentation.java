@@ -69,8 +69,15 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
       LinearLayout volumeRow=(LinearLayout)z.slider.getParent();
       require(volumeRow.getChildCount()==2&&volumeRow.getChildAt(0)==z.slider&&volumeRow.getChildAt(1)==z.value,"one slider and value per zone");
      }
-     require(a.linked.getParent()==a.dashboard,"separate bottom group");
-     require(a.dashboard.getChildAt(a.dashboard.getChildCount()-1)==a.linked,"group at bottom");
+     require(a.linked.getParent()==a.dashboard.getChildAt(0),"group in header");
+     require(a.zones[0].src.getParent()==a.zones[0].powerBtn.getParent(),"source and power on same row");
+     require(a.detailsPanels[0].body.getVisibility()==View.GONE&&a.detailsPanels[1].body.getVisibility()==View.GONE,"details collapsed by default");
+     a.detailsPanels[0].header.performClick();a.detailsPanels[1].header.performClick();
+     require(a.detailsPanels[0].body.getVisibility()==View.VISIBLE&&a.detailsPanels[1].body.getVisibility()==View.VISIBLE,"independent details");
+     require(a.mainControls.getParent()==a.dashboard&&a.detailScroll.getParent()==a.dashboard,"main controls outside details scroll");
+     require(a.zones[0].slider.isEnabled()&&a.zones[1].slider.isEnabled(),"main controls stay usable");
+     a.detailsPanels[0].header.performClick();require(a.detailsPanels[0].body.getVisibility()==View.GONE&&a.detailsPanels[1].body.getVisibility()==View.VISIBLE,"independent close");
+     a.detailsPanels[1].header.performClick();
      a.receive("MVL037");a.receive("ZVL32");a.render();
      require(a.zones[0].slider.isEnabled(),"volume above 50 enabled");
      require(a.zones[0].slider.getMax()==82,"profile maximum");
@@ -82,13 +89,16 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
      a.receive("ZVL37");a.render();require(a.zones[1].slider.isEnabled(),"volume recovered");
      require(a.groupPlus.isEnabled(),"linked SOURCE available");int before=a.zones[0].vol,second=a.zones[1].vol;a.groupPlus.performClick();require(a.zones[0].vol==before+1&&a.zones[1].vol==second+1,"relative group step");
      a.groupMinus.performClick();require(a.zones[0].vol==before&&a.zones[1].vol==second,"relative group minus");
-     a.receive("SLZ24");a.render();require(a.linked.getVisibility()==View.GONE,"linked only SOURCE");require(a.zones[1].mediaRow.getVisibility()==View.VISIBLE&&a.zones[1].mediaPrev.getVisibility()==View.VISIBLE,"FM controls");a.receive("PRZ04");a.render();require(a.zones[1].mediaChoice.getText().toString().contains("Demo FM 4"),"preset label");
+     a.receive("SLZ24");a.render();require(a.linked.getVisibility()==View.VISIBLE&&a.groupPlus.isEnabled(),"global volume independent of source");require(a.zones[1].mediaRow.getVisibility()==View.VISIBLE&&a.zones[1].mediaPrev.getVisibility()==View.VISIBLE,"FM controls");a.receive("PRZ04");a.render();require(a.zones[1].mediaChoice.getText().toString().contains("Demo FM 4"),"preset label");
      a.receive("SLZ12");a.render();require(a.zones[1].mediaChoice.getText().toString().equals("Google TV öffnen"),"TV shortcut");
      a.receive("SLZ03");a.render();require(a.zones[1].mediaRow.getVisibility()==View.GONE,"AUX hides media controls");
      a.receive("SLZ80");a.render();require(a.zones[1].mediaChoice.getText().toString().contains("folgt Wohnzimmer"),"SOURCE follows");
      a.dragVolume(0,52,false);require(a.zones[0].vol==52,"live drag before release");
      require(!a.listeningModes().containsKey("11"),"Pure Audio hidden while Esstisch on");
-     a.receive("ZPW00");require(a.listeningModes().containsKey("11"),"Pure Audio when Esstisch off");
+     a.receive("ZPW00");a.render();int livingBefore=a.zones[0].vol,diningBefore=a.zones[1].vol;
+     require(a.groupPlus.isEnabled(),"single active zone group enabled");a.groupPlus.performClick();
+     require(a.zones[0].vol==livingBefore+1&&a.zones[1].vol==diningBefore,"inactive zone not modified");
+     require(a.listeningModes().containsKey("11"),"Pure Audio when Esstisch off");
      require(a.listeningModes().containsKey("80")&&a.listeningModes().containsKey("82"),"surround choices");
      a.receive("LMD80");require(a.modeName(a.audio.get("LMD")).contains("Dolby Surround"),"confirmed mode");
     }catch(Throwable e){problem[0]=e;}});

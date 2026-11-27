@@ -55,5 +55,5 @@ jobs:
         run: |
           APK=app/build/outputs/apk/debug/app-debug.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
-          cp "$APK" Onkyo-dahoam-v0.8.0-preview.3.apk
-          gh release create v0.8.0-preview.3 Onkyo-dahoam-v0.8.0-preview.3.apk --target "${{ github.sha }}" --prerelease --title "Onkyo dahoam 0.8.0 VPN + Radio preview 3" --notes "Preview only. JVM and emulator checks passed; actual FRITZ!Box/VPN, LTE switching and Android widget background behavior require real-device testing. Temporary debug signature; uninstall may be required. Radio 3×2 and universal volume 2×1; initial FM zone volume 45."
+          cp "$APK" Onkyo-dahoam-v0.8.1-preview.1.apk
+          gh release create v0.8.1-preview.1 Onkyo-dahoam-v0.8.1-preview.1.apk --target "${{ github.sha }}" --prerelease --title "Onkyo dahoam 0.8.1 One Page preview 1" --notes "Preview only. JVM and emulator checks passed; actual FRITZ!Box/VPN, LTE switching and Android widget background behavior require real-device testing. Temporary debug signature; uninstall may be required. One-page dashboard with independent expandable details, header group volume, radio 3×2 and universal volume 2×1; initial FM zone volume 45. Tuner seek behavior requires hardware verification."

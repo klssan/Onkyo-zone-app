@@ -3,6 +3,7 @@ import android.app.*;
 import android.appwidget.*;
 import android.content.*;
 import android.net.*;
+import android.os.Bundle;
 import android.widget.*;
 public class RadioWidget extends AppWidgetProvider {
  static final String UP="RADIO_UP",DOWN="RADIO_DOWN",LIVING="RADIO_LIVING",DINING="RADIO_DINING",PLUS="RADIO_PLUS",MINUS="RADIO_MINUS",CHECK="RADIO_CHECK";
