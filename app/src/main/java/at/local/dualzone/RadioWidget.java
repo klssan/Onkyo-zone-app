@@ -25,6 +25,15 @@ public class RadioWidget extends AppWidgetProvider {
   for(int i=0;i<2;i++){e.putBoolean("on"+i,s.on[i]).putBoolean("fm"+i,s.fm(i));if(s.raw[i]>=0)e.putString("volume"+i,Protocol.volumeLabel(s.raw[i],s.scale[i]));}
   e.apply();refreshAll(c);
  }
+ static void storeVolumes(Context c,RadioControl.State s,Network n){
+  SharedPreferences p=prefs(c);
+  boolean same=n.getNetworkHandle()==p.getLong("network",0)&&SceneStore.target(c).equals(p.getString("target",""));
+  boolean samePower=same&&s.on[0]==p.getBoolean("on0",false)&&s.on[1]==p.getBoolean("on1",false);
+  SharedPreferences.Editor e=p.edit().putLong("at",System.currentTimeMillis()).putLong("network",n.getNetworkHandle()).putString("target",SceneStore.target(c)).remove("error");
+  if(!samePower)e.putString("station",s.on[0]||s.on[1]?"FM · Status unbekannt":"Radio aus");
+  for(int i=0;i<2;i++){e.putBoolean("on"+i,s.on[i]);if(!samePower)e.putBoolean("fm"+i,false);if(s.on[i]&&s.raw[i]>=0)e.putString("volume"+i,Protocol.volumeLabel(s.raw[i],s.scale[i]));else if(!same)e.remove("volume"+i);}
+  e.apply();refreshAll(c);
+ }
  static void failure(Context c,String error){prefs(c).edit().putString("error",error).putLong("at",0).apply();refreshAll(c);}
  static RemoteViews render(Context c,int id,boolean universal){
   SharedPreferences p=prefs(c);Network n=SceneWidget.lan(c);

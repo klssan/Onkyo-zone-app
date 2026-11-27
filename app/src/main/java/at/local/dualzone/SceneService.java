@@ -11,7 +11,10 @@ import java.util.*;
 public final class SceneService extends Service {
  static final String CHANNEL="scene_control";
  final Handler main=new Handler(Looper.getMainLooper());
- boolean running,checking,radio;String radioAction="";int activeId=-1,token;Thread worker;volatile Socket activeSocket;
+ boolean running,checking,radio;String radioAction="";final java.util.concurrent.atomic.AtomicInteger volumePending=new java.util.concurrent.atomic.AtomicInteger();int activeId=-1,token;Thread worker;volatile Socket activeSocket;
+ static boolean volumeAction(String a){return RadioWidget.PLUS.equals(a)||RadioWidget.MINUS.equals(a);}
+ int volumeDelta(String a){return RadioWidget.PLUS.equals(a)?1:-1;}
+ void enqueueVolume(String a){int d=volumeDelta(a);volumePending.updateAndGet(v->Math.max(-12,Math.min(12,v+d)));}
  @Override public IBinder onBind(Intent i){return null;}
  @Override public int onStartCommand(Intent i,int flags,int startId){
   int id=i==null?-1:i.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,-1);
@@ -22,36 +25,84 @@ public final class SceneService extends Service {
    if(Build.VERSION.SDK_INT>=34)startForeground(520,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE);else startForeground(520,n);
   }
   if(isRadio?!RadioWidget.owns(this,id):!SceneWidget.owns(this,id)||!checkOnly&&!SceneWidget.RUN.equals(action)){if(!running)stopSelf();return START_NOT_STICKY;}
-  if(running){if(isRadio){RadioWidget.phase(this,"Aktion läuft …");}else if(id!=activeId)SceneWidget.notice(this,id,"Andere Aktion läuft · erneut tippen");return START_NOT_STICKY;}
+  if(running){if(isRadio&&radio&&volumeAction(action)&&volumeAction(radioAction)){enqueueVolume(action);}else if(isRadio){RadioWidget.phase(this,"Aktion läuft …");}else if(id!=activeId)SceneWidget.notice(this,id,"Andere Aktion läuft · erneut tippen");return START_NOT_STICKY;}
   Scene scene=isRadio?null:SceneStore.get(this,id);if(!isRadio&&scene==null){SceneWidget.refresh(this,id);stopSelf();return START_NOT_STICKY;}
   if(!isRadio&&!checkOnly&&!SceneStore.begin(this,id)){SceneWidget.notice(this,id,"Speichern fehlgeschlagen · nicht gestartet");stopSelf();return START_NOT_STICKY;}
-  running=true;checking=checkOnly;radio=isRadio;radioAction=action;activeId=id;final int job=++token;
+  running=true;checking=checkOnly;radio=isRadio;radioAction=action;volumePending.set(0);if(volumeAction(action))enqueueVolume(action);activeId=id;final int job=++token;
   SceneWidget.observeNetwork(this);
   if(isRadio)RadioWidget.phase(this,"Verbinden …");else SceneWidget.phase(this,id,checkOnly?"Verbindung wird geprüft …":"Szene wird vorbereitet …");
   Diagnostics.open(getFilesDir());Diagnostics.event("WIDGET","start check="+checkOnly+" demo="+(!isRadio&&scene.demo));
   worker=new Thread(()->{
    String result;
    try{
-    if(isRadio){runScene(null,checkOnly,job,id);result="Bestätigt";}else if(scene.demo){scene.validate();Diagnostics.event("WIDGET","demo; no network commands");result="Demo · keine Befehle";}
+    if(isRadio){if(volumeAction(action))runVolume(job,id);else runScene(null,checkOnly,job,id);result="Bestätigt";}else if(scene.demo){scene.validate();Diagnostics.event("WIDGET","demo; no network commands");result="Demo · keine Befehle";}
     else{int count=runScene(scene,checkOnly,job,id);Diagnostics.event("WIDGET","observed actions="+count);result=count==-1?"Bestätigt · Aus":scene.radioToggleZone()>=0?"Bestätigt · An":"Bestätigt";}
    }catch(SceneExecutor.SceneException e){
     Diagnostics.event("WIDGET","not confirmed; observed actions="+e.confirmed+" reason="+safeSceneError(e.getMessage()));
     result=(e.confirmed>0?"Teilweise ("+e.confirmed+")":"Nicht bestätigt")+" · "+safeSceneError(e.getMessage());
    }catch(LocalFailure e){Diagnostics.event("WIDGET","preflight blocked reason="+e.getMessage());result="Nicht ausgeführt · "+e.getMessage();}
-   catch(Exception e){Diagnostics.error("WIDGET_ERROR",e);result="Nicht bestätigt · Receiver prüfen";}
+   catch(Exception e){Diagnostics.error("WIDGET_ERROR",e);result="Nicht bestätigt · "+(volumeAction(action)?safeSceneError(e.getMessage()):"Receiver prüfen");}
    final String message=result;
    main.post(()->{
     if(!running||token!=job||activeId!=id)return;
-    if(isRadio){if(!message.startsWith("Bestätigt"))RadioWidget.failure(this,message);RadioWidget.phase(this,"");}else if(!checkOnly&&SceneWidget.owns(this,id))SceneStore.complete(this,id,message);
+    if(isRadio){if(!message.startsWith("Bestätigt")){volumePending.set(0);RadioWidget.failure(this,message);}RadioWidget.phase(this,"");}else if(!checkOnly&&SceneWidget.owns(this,id))SceneStore.complete(this,id,message);
     running=false;activeId=-1;activeSocket=null;SceneWidget.phase(this,id,null);SceneWidget.refreshAll(this);
+    int remaining=volumePending.getAndSet(0);
+    if(isRadio&&volumeAction(action)&&message.startsWith("Bestätigt")&&remaining!=0){
+     String next=remaining>0?RadioWidget.PLUS:RadioWidget.MINUS;
+     onStartCommand(new Intent(this,SceneService.class).setAction(next).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id),0,startId);
+     volumePending.addAndGet(remaining-(remaining>0?1:-1));return;
+    }
     stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();
    });
   },"scene-control");worker.start();return START_NOT_STICKY;
  }
+ void runVolume(int job,int id)throws Exception{
+  Network network=SceneWidget.lan(this);if(network==null)throw new LocalFailure("Kein WLAN/LAN",WidgetStatus.NO_LAN);
+  SharedPreferences config=getSharedPreferences("config",MODE_PRIVATE);String ip=config.getString("ip","");boolean manual=config.getBoolean("manual",false);
+  String target=SceneStore.target(this);Capabilities profile=VolumeProfile.get(this,network,ip);
+  Socket socket=null;
+  try{
+   // A recently confirmed IP on the same network avoids a broadcast for every tap.
+   if(profile!=null||manual){
+    if(privateIp(ip))try{socket=network.getSocketFactory().createSocket();activeSocket=socket;socket.connect(new InetSocketAddress(ip,60128),900);}
+    catch(IOException e){if(socket!=null)socket.close();socket=null;profile=null;VolumeProfile.clear(this);}
+   }
+   if(socket==null&&!manual){
+    phase(job,id,"Onkyo wird gesucht …");
+    ArrayList<InetAddress> targets=new ArrayList<>();LinkProperties lp=getSystemService(ConnectivityManager.class).getLinkProperties(network);
+    if(lp!=null)for(LinkAddress l:lp.getLinkAddresses())if(l.getAddress() instanceof Inet4Address)targets.add(Discovery.broadcast(l.getAddress(),l.getPrefixLength()));
+    String deviceId=config.getString("deviceId","");ArrayList<Discovery.Device> matches=new ArrayList<>();
+    try(DatagramSocket udp=new DatagramSocket(null)){network.bindSocket(udp);udp.bind(new InetSocketAddress(0));for(Discovery.Device d:Discovery.find(udp,targets,1800))if(d.model.equalsIgnoreCase("TX-NR656")&&d.port==60128&&(deviceId.isEmpty()||deviceId.equals(d.id)))matches.add(d);}
+    if(matches.size()!=1)throw new LocalFailure(matches.isEmpty()?"Onkyo nicht gefunden":"Receiver in App auswählen",WidgetStatus.NOT_FOUND);
+    if(!target.equals(SceneStore.target(this)))throw new LocalFailure("Receiver-Auswahl geändert",null);
+    Discovery.Device selected=matches.get(0);ip=selected.ip;config.edit().putString("ip",ip).putString("deviceId",selected.id).apply();target=SceneStore.target(this);
+    socket=network.getSocketFactory().createSocket();activeSocket=socket;socket.connect(new InetSocketAddress(ip,60128),2500);
+   }
+   if(socket==null)throw new LocalFailure("Onkyo nicht erreichbar",WidgetStatus.UNREACHABLE);
+   socket.setTcpNoDelay(true);
+   try(SceneExecutor.SocketWire wire=new SceneExecutor.SocketWire(socket,25000)){
+    if(profile==null){String raw=wire.query("NRI");profile=Capabilities.parse(raw);if(!profile.model.equalsIgnoreCase("TX-NR656"))throw new LocalFailure("Falsches Receiver-Modell",WidgetStatus.WRONG_MODEL);VolumeProfile.save(this,network,ip,raw);}
+    RadioControl.State state=RadioControl.readVolumes(wire,profile);
+    phase(job,id,"Lautstärke …");long until=SystemClock.elapsedRealtime()+12000;
+    while(SystemClock.elapsedRealtime()<until&&!Thread.currentThread().isInterrupted()){
+     if(!target.equals(SceneStore.target(this))||!network.equals(SceneWidget.lan(this)))throw new LocalFailure("Verbindung geändert",null);
+     int delta=volumePending.getAndSet(0);
+     if(delta==0){Thread.sleep(250);delta=volumePending.getAndSet(0);if(delta==0)break;}
+     // Coalesce rapid presses to one bounded, confirmed write per active zone.
+     RadioControl.adjust(state,wire,delta);
+     RadioWidget.storeVolumes(this,state,network);
+    }
+    if(!state.on[0]&&!state.on[1])RadioWidget.storeVolumes(this,state,network);
+    probe(job,WidgetStatus.REACHABLE,network.getNetworkHandle(),target);
+   }
+  }catch(Exception e){VolumeProfile.clear(this);Diagnostics.error("WIDGET_VOLUME_ERROR",e);throw e;}
+  finally{if(socket!=null)try{socket.close();}catch(IOException ignored){}activeSocket=null;}
+ }
  static String safeSceneError(String message){
   if(message==null)return "Receiver antwortet nicht";
   if(message.matches("(Status fehlt|Nicht bestätigt|Nicht verfügbar): [A-Z0-9]{3}"))return message;
-  if(Arrays.asList("Zonenstatus unbekannt","Zone ausgeschaltet","Quelle unbekannt","SOURCE folgt Wohnzimmer","Gemeinsame Medienquelle","Gemeinsamer FM/AM-Tuner","Lautstärke über Geräte-Maximum","Radiospeicherplatz unbekannt").contains(message))return message;
+  if(Arrays.asList("Zonenstatus unbekannt","Zone ausgeschaltet","Quelle unbekannt","SOURCE folgt Wohnzimmer","Gemeinsame Medienquelle","Gemeinsamer FM/AM-Tuner","Lautstärke über Geräte-Maximum","Radiospeicherplatz unbekannt","Lautstärke nicht verfügbar").contains(message))return message;
   return "Receiver antwortet nicht";
  }
  void phase(int job,int id,String value){main.post(()->{if(running&&token==job&&activeId==id){if(radio)RadioWidget.phase(this,value);else SceneWidget.phase(this,id,value);}});}
@@ -88,7 +139,7 @@ public final class SceneService extends Service {
     phase(job,id,"Gerätestatus wird geprüft …");
     try(SceneExecutor.SocketWire wire=new SceneExecutor.SocketWire(socket,30000)){
      Capabilities profile=null;
-     try{profile=Capabilities.parse(wire.query("NRI"));}catch(Exception e){Diagnostics.error("WIDGET_PROFILE_UNAVAILABLE",e);}
+     try{String raw=wire.query("NRI");profile=Capabilities.parse(raw);if(profile.model.equalsIgnoreCase("TX-NR656"))VolumeProfile.save(this,network,ip,raw);}catch(Exception e){Diagnostics.error("WIDGET_PROFILE_UNAVAILABLE",e);}
      if(profile!=null&&!profile.model.equalsIgnoreCase("TX-NR656"))throw new LocalFailure("Falsches Receiver-Modell",WidgetStatus.WRONG_MODEL);
      if(profile==null&&manual)throw new LocalFailure("Geräteprofil nicht bestätigt",WidgetStatus.PROFILE_UNKNOWN);
      SceneExecutor.checkReceiver(wire);probe(job,WidgetStatus.REACHABLE,handle,target);

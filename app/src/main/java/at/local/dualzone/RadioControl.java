@@ -57,11 +57,21 @@ final class RadioControl {
   else if(!c.hasPresets&&s.preset>0){w.set(PRESET[i]+(direction>0?"UP":"DOWN"),PRESET[i],null);}
   else{w.set(TUNE[i]+(direction>0?"UP":"DOWN"),TUNE[i],null);}
  }
+ static State readVolumes(SceneExecutor.Wire w,Capabilities c)throws IOException{
+  State s=new State();
+  for(int i=0;i<2;i++){String power=w.query(POWER[i]);if(!power.equals("00")&&!power.equals("01"))throw new IOException("Zonenstatus unbekannt");s.on[i]=power.equals("01");}
+  for(int i=0;i<2;i++)if(s.on[i]){
+   s.raw[i]=Protocol.volume(w.query(VOLUME[i]));
+   if(s.raw[i]<0)throw new IOException("Lautstärke nicht verfügbar");
+   s.scale[i]=c.volumeReported[i]?c.volumeScale[i]:s.raw[i]>100?2:1;s.max[i]=Protocol.maxVolume(c.volumeMax[i],s.scale[i],s.raw[i]);
+  }
+  return s;
+ }
  static void adjust(State s,SceneExecutor.Wire w,int direction)throws IOException{
   for(int i=0;i<2;i++)if(s.on[i]&&s.raw[i]<0)throw new IOException("Lautstärke nicht verfügbar");
   int[] target=s.raw.clone();
   if(s.on[0]&&s.on[1])target=Protocol.linkedScaled(s.raw[0],s.raw[1],s.scale[0],s.scale[1],s.max[0],s.max[1],direction*2);
   else for(int i=0;i<2;i++)if(s.on[i])target[i]=Math.max(0,Math.min(s.max[i],s.raw[i]+direction*s.scale[i]));
-  for(int i=0;i<2;i++)if(s.on[i]&&target[i]!=s.raw[i]){String v=Protocol.hex(target[i]);w.set(VOLUME[i]+v,VOLUME[i],v);}
+  for(int i=0;i<2;i++)if(s.on[i]&&target[i]!=s.raw[i]){String v=Protocol.hex(target[i]);w.set(VOLUME[i]+v,VOLUME[i],v);s.raw[i]=target[i];}
  }
 }

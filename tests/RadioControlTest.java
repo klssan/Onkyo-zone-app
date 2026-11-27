@@ -12,8 +12,9 @@ public class RadioControlTest {
   s.on[1]=true;s.source[1]="24";s.raw[1]=90;s.raw[0]=50;s.preset=7;
   RadioControl.step(s,w,c,1);check(writes.equals(Arrays.asList("PRZ09")));writes.clear();
   c.presets.clear();RadioControl.step(s,w,c,-1);check(writes.equals(Arrays.asList("TUZDOWN")));writes.clear();
-  RadioControl.adjust(s,w,1);check(writes.equals(Arrays.asList("ZVL5C")));writes.clear();
-  s.on[0]=true;s.source[0]="12";RadioControl.adjust(s,w,-1);check(writes.equals(Arrays.asList("MVL31","ZVL58")));writes.clear();
+  RadioControl.adjust(s,w,1);check(writes.equals(Arrays.asList("ZVL5C"))&&s.raw[1]==92);writes.clear();
+  RadioControl.adjust(s,w,3);check(writes.equals(Arrays.asList("ZVL62"))&&s.raw[1]==98);writes.clear();
+  s.on[0]=true;s.source[0]="12";RadioControl.adjust(s,w,-1);check(writes.equals(Arrays.asList("MVL31","ZVL60")));writes.clear();
   RadioControl.toggle(s,w,c,1);check(writes.equals(Arrays.asList("ZPW00")));writes.clear();
   s.on[0]=false;s.on[1]=false;RadioControl.adjust(s,w,1);check(writes.isEmpty());
   System.out.println("Radio preset wrap, tuning fallback, volume 45, active-only volume passed");

@@ -44,3 +44,5 @@ Fixed compact header and both zone controls, source and power in one row. Global
 
 ## LAN-only installation diagnostic
 Based on the exact 0.8.1 preview, retaining dashboard and widgets, excluding WireGuard, remote setup, native libraries and remote instrumentation. Temporary debug signature is deliberate for this one isolation test; not the permanent release channel. The later 0.8.2 scene editor is not included to avoid confounding the comparison.
+
+0.8.2 LAN: fast group volume checks power and active volume only, reuses verified receiver IP/profile on the same LAN for ten minutes, combines rapid taps, confirms writes and never replays failed commands. Temporary diagnostic signing remains. No VPN. New scene editor remains on the separate development branch.
