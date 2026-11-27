@@ -13,6 +13,7 @@ public final class SceneWidget extends AppWidgetProvider {
  private static ConnectivityManager.NetworkCallback monitor;
  static boolean owns(Context c,int id){if(id==AppWidgetManager.INVALID_APPWIDGET_ID)return false;AppWidgetProviderInfo info=AppWidgetManager.getInstance(c).getAppWidgetInfo(id);return info!=null&&new ComponentName(c,SceneWidget.class).equals(info.provider);}
  static Network lan(Context c){
+  if(RemoteVpn.selected())return RemoteVpn.network(c);
   ConnectivityManager m=c.getSystemService(ConnectivityManager.class);
   if(m==null)return null;Network active=m.getActiveNetwork();if(isLan(m,active))return active;
   for(Network n:m.getAllNetworks())if(isLan(m,n))return n;return null;

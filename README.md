@@ -1,6 +1,9 @@
 # Onkyo dahoam
 Unofficial local Android controller for TX-NR656.
 
+## v0.8.0 WireGuard preview (development branch)
+Setup wizard imports a single-device FRITZ!Box configuration with Android's document picker and stores it encrypted via Android Keystore. The embedded WireGuard library limits VPN routing to the receiver's private IPv4 /32 and the Onkyo app only, removes VPN DNS, and tests model and power with read-only receiver queries before enabling controls. Explicit connect/disconnect; active tunnel used by dashboard and scene widgets. No automatic background start or real FRITZ!Box test yet. The existing stable branch is unchanged. Next steps: network-change and background recovery, combined 2x1 volume widget, and phone/FRITZ!Box validation.
+
 ## v0.7.3
 Simplified scene widgets at every size: existing logo as a faint background, large title, compact status, no zone or preset details. Volume shortcuts use the same background style and retain their zone names for identification. Configuration warns when a source is selected with power unchanged. Widget errors record the reason; inactive-zone errors display "Zone aus". Temporary debug signing is permitted until a permanent key is configured; once a permanently signed release exists, certificate matching and in-place upgrade tests are mandatory. See [SIGNING.md](SIGNING.md).
 

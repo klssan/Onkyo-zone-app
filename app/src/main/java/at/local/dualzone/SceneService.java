@@ -61,9 +61,10 @@ public final class SceneService extends Service {
   ConnectivityManager cm=getSystemService(ConnectivityManager.class);Network network=SceneWidget.lan(this);
   long handle=network==null?0:network.getNetworkHandle();
   SharedPreferences config=getSharedPreferences("config",MODE_PRIVATE);boolean manual=config.getBoolean("manual",false);String ip=config.getString("ip",""),deviceId=config.getString("deviceId","");
+  boolean remote=RemoteVpn.selected();if(remote){manual=true;ip=RemoteVpn.target;}
   String target=SceneStore.target(this),failure=WidgetStatus.DISCOVERY_ERROR;
   try{
-   if(network==null)throw new LocalFailure("Kein WLAN/LAN",WidgetStatus.NO_LAN);
+   if(network==null)throw new LocalFailure(remote?"Fernzugriff in App verbinden":"Kein WLAN/LAN",WidgetStatus.NO_LAN);
    if(!manual){
     phase(job,id,"Onkyo wird gesucht …");
     ArrayList<InetAddress> targets=new ArrayList<>();LinkProperties props=cm.getLinkProperties(network);

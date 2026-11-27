@@ -1,7 +1,9 @@
 plugins { id 'com.android.application' }
 android {
  namespace 'at.local.dualzone'
- compileSdk 35
- defaultConfig { applicationId 'at.local.dualzone'; minSdk 26; targetSdk 34; versionCode 15; versionName '0.7.3'; testInstrumentationRunner 'at.local.dualzone.WidgetRenderInstrumentation' }
+ compileSdk 36
+ defaultConfig { applicationId 'at.local.dualzone'; minSdk 26; targetSdk 34; versionCode 17; versionName '0.8.0'; testInstrumentationRunner 'at.local.dualzone.WidgetRenderInstrumentation' }
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
+
+dependencies { implementation 'com.wireguard.android:tunnel:1.0.20260102' }
