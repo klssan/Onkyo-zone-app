@@ -96,7 +96,7 @@ jobs:
           javac -d /tmp/onkyo-tests app/src/main/java/at/local/dualzone/{Protocol,Receiver,Discovery,Capabilities,Diagnostics,Scene,SceneExecutor,WidgetStatus,RetryPolicy,RadioControl}.java tests/*.java
           for t in Protocol Receiver Discovery Capabilities Diagnostics WireReplay Scene WidgetStatus Volume RetryPolicy RadioControl; do java -cp /tmp/onkyo-tests at.local.dualzone.${t}Test; done
       - name: Compile APK
-        run: gradle --no-daemon assembleDebug
+        run: gradle --no-daemon assembleDebug assembleDebugAndroidTest
       - name: Verify isolation, package, version and signature
         env:
           VERSION: ${{ steps.preflight.outputs.version }}
@@ -129,6 +129,11 @@ jobs:
           name: lan-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lan-widget-test
+          path: app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
   ui:
     needs: build
     runs-on: ubuntu-latest
@@ -143,6 +148,10 @@ jobs:
         with:
           packages: 'platform-tools'
           log-accepted-android-sdk-licenses: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: lan-widget-test
+          path: app/build/outputs/apk/androidTest/debug
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -154,7 +163,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: python3 tests/ui_smoke.py
+          script: python3 tests/ui_smoke.py && python3 tests/radio_widget_render.py
       - name: Upload UI failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
@@ -193,5 +202,5 @@ jobs:
           else
             NOTE="Temporary debug signing; existing installs may require uninstall, which removes settings and widgets."
           fi
-          printf 'Signing: %s\n\n%s\n\nJVM tests, APK isolation and identity checks, signature verification and Android UI smoke tests passed. LAN only; no WireGuard. Real receiver behavior requires hardware testing.\n' "$SIGNING" "$NOTE" > /tmp/lan-notes
+          printf 'Signing: %s\n\n%s\n\nJVM tests, APK isolation and identity checks, signature verification and Android UI smoke tests and radio-widget layout checks passed. LAN only; no WireGuard. Real receiver behavior requires hardware testing.\n' "$SIGNING" "$NOTE" > /tmp/lan-notes
           gh release create "$TAG" "$APK" --target "$GITHUB_SHA" --prerelease --title "Onkyo dahoam $TAG (LAN beta)" --notes-file /tmp/lan-notes

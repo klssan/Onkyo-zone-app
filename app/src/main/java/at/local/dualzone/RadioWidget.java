@@ -50,14 +50,12 @@ public class RadioWidget extends AppWidgetProvider {
    String error=p.getString("error","");
    String state=!phase.isEmpty()?"…":n==null?"Offline":!error.isEmpty()?"Fehler":!fresh?"?":on?"An · "+vol:"Aus";
    int powerColor=on&&phase.isEmpty()?ACTIVE:!fresh||!error.isEmpty()||!phase.isEmpty()?WARN:OFF;
-   set(v,R.id.radio_status,state,powerColor);
-   v.setTextViewCompoundDrawables(R.id.radio_status,0,powerColor==ACTIVE?R.drawable.radio_power_on:powerColor==WARN?R.drawable.radio_power_warn:R.drawable.radio_power_off,0,0);
-   v.setContentDescription(R.id.radio_status,"Radio "+state+(error.isEmpty()?"":" · "+error)+(phase.isEmpty()?"":" · "+phase));
-   click(c,v,id,R.id.radio_status,TOGGLE);
    String station=on?p.getString("station","FM"):"FM";
-   v.setImageViewResource(R.id.radio_station,on?R.drawable.radio_receiver_on:R.drawable.radio_receiver_off);
-   v.setContentDescription(R.id.radio_station,"Nächster FM-Sender · "+station);
-   click(c,v,id,R.id.radio_station,UP);
+   radioFace(v,state,powerColor,station,on);
+   v.setContentDescription(R.id.radio_power_tile,"Radio "+state+(error.isEmpty()?"":" · "+error)+(phase.isEmpty()?"":" · "+phase));
+   click(c,v,id,R.id.radio_power_tile,TOGGLE);
+   v.setContentDescription(R.id.radio_station_tile,"Nächster FM-Sender · "+station);
+   click(c,v,id,R.id.radio_station_tile,UP);
   }else{
    set(v,R.id.volume_living,"Wohnzimmer"+(fresh?(a?"  "+va:"  Aus"):"  –"),fresh&&a?ACTIVE:OFF);
    set(v,R.id.volume_dining,"Esstisch"+(fresh?(b?"  "+vb:"  Aus"):"  –"),fresh&&b?ACTIVE:OFF);
@@ -68,6 +66,18 @@ public class RadioWidget extends AppWidgetProvider {
   String error=p.getString("error","");String status=!phase.isEmpty()?phase:n==null?(RemoteVpn.selected(c)?RemoteVpn.status(c):"Offline · tippen zum Prüfen"):!error.isEmpty()?error:fresh?(a||b?"Verbunden":"Beide Zonen aus"):"Status prüfen";
   if(universal){set(v,R.id.radio_status,status,fresh&&error.isEmpty()&&phase.isEmpty()?ACTIVE:WARN);click(c,v,id,R.id.radio_status,CHECK);}
   return v;
+ }
+ static String stationLabel(String station){
+  if(station.startsWith("FM · "))return station.substring(5);
+  int separator=station.indexOf(" · ");
+  if(separator>0)return station.substring(0,separator);
+  return station.replace(" MHz","");
+ }
+ static void radioFace(RemoteViews v,String state,int powerColor,String station,boolean on){
+  set(v,R.id.radio_status,state,powerColor);
+  v.setImageViewResource(R.id.radio_power_icon,powerColor==ACTIVE?R.drawable.radio_power_on:powerColor==WARN?R.drawable.radio_power_warn:R.drawable.radio_power_off);
+  v.setImageViewResource(R.id.radio_station,on?R.drawable.radio_receiver_on:R.drawable.radio_receiver_off);
+  set(v,R.id.radio_station_label,stationLabel(station),on?ACTIVE:OFF);
  }
  static void set(RemoteViews v,int id,String text,int color){v.setTextViewText(id,text);v.setTextColor(id,color);}
  static void click(Context c,RemoteViews v,int id,int view,String action){

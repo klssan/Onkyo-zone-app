@@ -5,11 +5,36 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.*;
 public final class WidgetRenderInstrumentation extends Instrumentation {
- @Override public void onCreate(Bundle args){super.onCreate(args);start();}
+ boolean radioOnly;
+ @Override public void onCreate(Bundle args){super.onCreate(args);radioOnly=args!=null&&"true".equals(args.getString("radioOnly"));start();}
  static void require(boolean ok,String message){if(!ok)throw new AssertionError(message);}
  static String value(View root,int id){return ((TextView)root.findViewById(id)).getText().toString();}
+ static void checkRadio(Context c){
+  float d=c.getResources().getDisplayMetrics().density;
+  for(int size:new int[]{110,128,160}){
+   RemoteViews face=RadioWidget.render(c,123,false);
+   RadioWidget.radioFace(face,"An · 35",RadioWidget.ACTIVE,"FM4 · 104.1",true);
+   View radio=face.apply(c,new FrameLayout(c));
+   int px=Math.round(size*d);
+   radio.measure(View.MeasureSpec.makeMeasureSpec(px,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(px,View.MeasureSpec.EXACTLY));radio.layout(0,0,px,px);
+   require(value(radio,R.id.radio_status).equals("An · 35")&&value(radio,R.id.radio_station_label).equals("FM4"),"active labels");
+   require(value(radio,R.id.radio_plus).equals("+"),"plus");
+   for(int[] ids:new int[][]{{R.id.radio_power_tile,R.id.radio_power_icon,R.id.radio_status},{R.id.radio_station_tile,R.id.radio_station,R.id.radio_station_label}}){
+    View tile=radio.findViewById(ids[0]),icon=radio.findViewById(ids[1]),label=radio.findViewById(ids[2]);
+    require(((ImageView)icon).getDrawable()!=null,"icon present");
+    require(Math.abs(2*icon.getLeft()+icon.getWidth()-tile.getWidth())<=2&&Math.abs(2*icon.getTop()+icon.getHeight()-tile.getHeight())<=2,"icon centered");
+    require(label.getTop()>=icon.getBottom()-1&&label.getBottom()<=tile.getHeight(),"caption below icon");
+    int left=icon.getLeft(),top=icon.getTop();
+    ((TextView)label).setText("");
+    radio.measure(View.MeasureSpec.makeMeasureSpec(px,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(px,View.MeasureSpec.EXACTLY));radio.layout(0,0,px,px);
+    require(icon.getLeft()==left&&icon.getTop()==top,"icon position unchanged without text");
+   }
+  }
+  require(RadioWidget.stationLabel("FM · P04").equals("P04")&&RadioWidget.stationLabel("101,20 MHz").equals("101,20"),"station fallbacks");
+ }
  @Override public void onStart(){
   Bundle result=new Bundle();final Throwable[] problem={null};
+  if(radioOnly){runOnMainSync(()->{try{checkRadio(getTargetContext());}catch(Throwable e){problem[0]=e;}});if(problem[0]==null){result.putString("widget_render_ok","true");finish(Activity.RESULT_OK,result);}else{result.putString("widget_render_error",problem[0].toString());finish(Activity.RESULT_CANCELED,result);}return;}
   runOnMainSync(()->{try{
    Context c=getTargetContext();long now=System.currentTimeMillis();
    require(c.getApplicationInfo().loadLabel(c.getPackageManager()).toString().equals("Onkyo dahoam"),"app label");
@@ -33,13 +58,7 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
    small.measure(View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(64*d),View.MeasureSpec.EXACTLY));small.layout(0,0,Math.round(64*d),Math.round(64*d));
    require(small.findViewById(R.id.scene_name).getHeight()>0&&small.findViewById(R.id.scene_status).getHeight()>0,"compact title and status");
    require(((TextView)small.findViewById(R.id.scene_name)).getTextSize()>((TextView)small.findViewById(R.id.scene_status)).getTextSize(),"title more prominent");
-   View radio=RadioWidget.render(c,123,false).apply(c,new FrameLayout(c));
-   require(!value(radio,R.id.radio_status).contains("Radio")&&value(radio,R.id.radio_plus).equals("+"),"compact power status");
-   require(((TextView)radio.findViewById(R.id.radio_status)).getCompoundDrawables()[1]!=null,"power icon");
-   require(radio.findViewById(R.id.radio_station) instanceof ImageView&&((ImageView)radio.findViewById(R.id.radio_station)).getDrawable()!=null,"centered radio icon");
-   radio.measure(View.MeasureSpec.makeMeasureSpec(Math.round(128*d),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(128*d),View.MeasureSpec.EXACTLY));radio.layout(0,0,Math.round(128*d),Math.round(128*d));
-   for(int item:new int[]{R.id.radio_status,R.id.radio_station,R.id.radio_plus,R.id.radio_minus})require(radio.findViewById(item).getHeight()>0&&radio.findViewById(item).getWidth()>0,"radio button layout");
-   require(radio.findViewById(R.id.radio_status).getTop()==radio.findViewById(R.id.radio_plus).getTop(),"aligned radio row");
+   checkRadio(c);
    View universal=RadioWidget.render(c,124,true).apply(c,new FrameLayout(c));require(value(universal,R.id.volume_living).contains("Wohnzimmer")&&value(universal,R.id.volume_dining).contains("Esstisch"),"two aligned volume labels");
    for(int zone=0;zone<2;zone++){
     View volume=VolumeWidget.render(c,zone).apply(c,new FrameLayout(c));
