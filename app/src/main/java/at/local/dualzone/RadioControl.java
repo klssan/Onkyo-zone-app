@@ -65,6 +65,22 @@ final class RadioControl {
   else{w.set(TUNE[i]+(direction>0?"UP":"DOWN"),TUNE[i],null);}
   return s;
  }
+ // The compact radio widget must not turn on a zone, change its input,
+ // or adjust another zone when changing stations or volume.
+ static void stepDining(State s,SceneExecutor.Wire w,Capabilities c)throws IOException{
+  if(!s.fm(1))return;
+  if(s.source[1].equals("80"))return; // do not send a main-zone command
+  int next=nextPreset(c,s.preset,1);
+  if(next>0){if(next!=s.preset){String hex=Protocol.hex(next);w.set(PRESET[1]+hex,PRESET[1],hex);}}
+  else if(!c.hasPresets&&s.preset>0)w.set(PRESET[1]+"UP",PRESET[1],null);
+  else if(!c.hasPresets)w.set(TUNE[1]+"UP",TUNE[1],null);
+ }
+ static void adjustDining(State s,SceneExecutor.Wire w,int direction)throws IOException{
+  if(!s.fm(1))return;
+  if(s.raw[1]<0)throw new IOException("Lautstärke nicht verfügbar");
+  int target=Math.max(0,Math.min(s.max[1],s.raw[1]+direction*s.scale[1]));
+  if(target!=s.raw[1]){String v=Protocol.hex(target);w.set(VOLUME[1]+v,VOLUME[1],v);s.raw[1]=target;}
+ }
  static State readVolumes(SceneExecutor.Wire w,Capabilities c)throws IOException{
   State s=new State();
   for(int i=0;i<2;i++){String power=w.query(POWER[i]);if(!power.equals("00")&&!power.equals("01"))throw new IOException("Zonenstatus unbekannt");s.on[i]=power.equals("01");}

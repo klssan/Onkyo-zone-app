@@ -25,7 +25,7 @@ public final class SceneService extends Service {
    if(Build.VERSION.SDK_INT>=34)startForeground(520,n,ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE);else startForeground(520,n);
   }
   if(isRadio?!RadioWidget.owns(this,id):!SceneWidget.owns(this,id)||!checkOnly&&!SceneWidget.RUN.equals(action)){if(!running)stopSelf();return START_NOT_STICKY;}
-  if(running){if(isRadio&&radio&&volumeAction(action)&&volumeAction(radioAction)){enqueueVolume(action);}else if(isRadio){RadioWidget.phase(this,"Aktion läuft …");}else if(id!=activeId)SceneWidget.notice(this,id,"Andere Aktion läuft · erneut tippen");return START_NOT_STICKY;}
+  if(running){if(isRadio&&radio&&volumeAction(action)&&volumeAction(radioAction)&&RadioWidget.isRadio(this,id)==RadioWidget.isRadio(this,activeId)){enqueueVolume(action);}else if(isRadio){RadioWidget.phase(this,"Aktion läuft …");}else if(id!=activeId)SceneWidget.notice(this,id,"Andere Aktion läuft · erneut tippen");return START_NOT_STICKY;}
   Scene scene=isRadio?null:SceneStore.get(this,id);if(!isRadio&&scene==null){SceneWidget.refresh(this,id);stopSelf();return START_NOT_STICKY;}
   if(!isRadio&&!checkOnly&&!SceneStore.begin(this,id)){SceneWidget.notice(this,id,"Speichern fehlgeschlagen · nicht gestartet");stopSelf();return START_NOT_STICKY;}
   running=true;checking=checkOnly;radio=isRadio;radioAction=action;volumePending.set(0);if(volumeAction(action))enqueueVolume(action);activeId=id;final int job=++token;
@@ -83,17 +83,18 @@ public final class SceneService extends Service {
    socket.setTcpNoDelay(true);
    try(SceneExecutor.SocketWire wire=new SceneExecutor.SocketWire(socket,25000)){
     if(profile==null){String raw=wire.query("NRI");profile=Capabilities.parse(raw);if(!profile.model.equalsIgnoreCase("TX-NR656"))throw new LocalFailure("Falsches Receiver-Modell",WidgetStatus.WRONG_MODEL);VolumeProfile.save(this,network,ip,raw);}
-    RadioControl.State state=RadioControl.readVolumes(wire,profile);
+    boolean diningOnly=RadioWidget.isRadio(this,id);
+    RadioControl.State state=diningOnly?RadioControl.read(wire,profile):RadioControl.readVolumes(wire,profile);
     phase(job,id,"Lautstärke …");long until=SystemClock.elapsedRealtime()+12000;
     while(SystemClock.elapsedRealtime()<until&&!Thread.currentThread().isInterrupted()){
      if(!target.equals(SceneStore.target(this))||!network.equals(SceneWidget.lan(this)))throw new LocalFailure("Verbindung geändert",null);
      int delta=volumePending.getAndSet(0);
      if(delta==0){Thread.sleep(250);delta=volumePending.getAndSet(0);if(delta==0)break;}
      // Coalesce rapid presses to one bounded, confirmed write per active zone.
-     RadioControl.adjust(state,wire,delta);
-     RadioWidget.storeVolumes(this,state,network);
+     if(diningOnly){RadioControl.adjustDining(state,wire,delta);RadioWidget.store(this,state,profile,network);}
+     else{RadioControl.adjust(state,wire,delta);RadioWidget.storeVolumes(this,state,network);}
     }
-    if(!state.on[0]&&!state.on[1])RadioWidget.storeVolumes(this,state,network);
+    if(!state.on[0]&&!state.on[1]){if(diningOnly)RadioWidget.store(this,state,profile,network);else RadioWidget.storeVolumes(this,state,network);}
     probe(job,WidgetStatus.REACHABLE,network.getNetworkHandle(),target);
    }
   }catch(Exception e){VolumeProfile.clear(this);Diagnostics.error("WIDGET_VOLUME_ERROR",e);throw e;}
@@ -147,27 +148,16 @@ public final class SceneService extends Service {
       if(profile==null)throw new LocalFailure("Geräteprofil nicht bestätigt",WidgetStatus.PROFILE_UNKNOWN);
       RadioControl.State state=RadioControl.read(wire,profile);
       if(!target.equals(SceneStore.target(this))||remote&&!network.equals(RemoteVpn.network(this)))throw new LocalFailure("Verbindung geändert · erneut tippen",null);
-      int zone=RadioWidget.zone(this,id),pending=RadioWidget.pendingPreset(this,id);
-      boolean select=false;int desired=-1;
+      int desired=-1;
       switch(radioAction){
        case RadioWidget.TOGGLE:
-        if(state.fm(zone)){RadioControl.toggle(state,wire,profile,zone);}
-        else{desired=pending>0?pending:state.tuner()<0?RadioWidget.lastPreset(this):-1;RadioControl.startFM(state,wire,profile,zone);select=desired>0;}
+        if(state.fm(1)){RadioControl.toggle(state,wire,profile,1);}
+        else{desired=state.tuner()<0?RadioWidget.lastPreset(this):-1;RadioControl.startFM(state,wire,profile,1);}
+        state=RadioControl.read(wire,profile);
+        if(desired>0&&state.fm(1)){RadioControl.selectPreset(state,wire,profile,1,desired);RadioControl.readTuner(state,wire);}
         break;
-       case RadioWidget.SELECT:desired=pending;select=desired>0&&state.fm(zone);break;
-       case RadioWidget.UP:state=RadioControl.step(state,wire,profile,1);break;
-       case RadioWidget.DOWN:state=RadioControl.step(state,wire,profile,-1);break;
-       case RadioWidget.LIVING:RadioControl.toggle(state,wire,profile,0);break;
-       case RadioWidget.DINING:RadioControl.toggle(state,wire,profile,1);break;
-       case RadioWidget.PLUS:RadioControl.adjust(state,wire,1);break;
-       case RadioWidget.MINUS:RadioControl.adjust(state,wire,-1);break;
+       case RadioWidget.UP:RadioControl.stepDining(state,wire,profile);RadioControl.readTuner(state,wire);break;
        default:break;
-      }
-      if(RadioWidget.UP.equals(radioAction)||RadioWidget.DOWN.equals(radioAction))RadioControl.readTuner(state,wire);else if(!checkOnly)state=RadioControl.read(wire,profile);
-      if(select){
-       RadioControl.selectPreset(state,wire,profile,zone,desired);RadioControl.readTuner(state,wire);
-       if(state.preset!=desired)throw new IOException("Radiospeicherplatz nicht bestätigt");
-       if(pending==desired&&RadioWidget.pendingPreset(this,id)==pending)RadioWidget.prefs(this).edit().remove("preset_"+id).apply();
       }
       RadioWidget.store(this,state,profile,network);return 0;
      }

@@ -22,6 +22,12 @@ public class RadioControlTest {
   List<String> queries=new ArrayList<>();
   SceneExecutor.Wire standby=new SceneExecutor.Wire(){public String query(String prefix){queries.add(prefix);if(prefix.equals("PWR")||prefix.equals("ZPW"))return "00";if(prefix.equals("SLI")||prefix.equals("SLZ"))return "24";throw new AssertionError(prefix);}public void set(String a,String b,String c){throw new AssertionError(a);}};
   RadioControl.State off=RadioControl.read(standby,c);check(off.raw[0]==-1&&off.raw[1]==-1&&!queries.contains("MVL")&&!queries.contains("ZVL"));
-  System.out.println("Radio preset wrap, tuning fallback, volume 45, active-only volume passed");
+  s.on[0]=true;s.source[0]="12";s.raw[0]=50;
+  s.on[1]=true;s.source[1]="24";s.raw[1]=90;s.preset=7;
+  RadioControl.adjustDining(s,w,1);check(writes.equals(Arrays.asList("ZVL5C"))&&s.raw[0]==50);writes.clear();
+  RadioControl.stepDining(s,w,c);check(writes.equals(Arrays.asList("PRZ09")));writes.clear();
+  s.on[1]=false;RadioControl.adjustDining(s,w,1);RadioControl.stepDining(s,w,c);check(writes.isEmpty());
+  s.on[1]=true;s.source[1]="12";RadioControl.adjustDining(s,w,1);RadioControl.stepDining(s,w,c);check(writes.isEmpty());
+  System.out.println("Radio preset wrap, tuning fallback, volume 45, active-only and dining-only volume passed");
  }
 }

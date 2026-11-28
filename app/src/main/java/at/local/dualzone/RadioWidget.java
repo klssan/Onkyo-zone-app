@@ -14,10 +14,8 @@ public class RadioWidget extends AppWidgetProvider {
  static int[] ids(Context c,Class<?> type){return AppWidgetManager.getInstance(c).getAppWidgetIds(new ComponentName(c,type));}
  static boolean owns(Context c,int id){for(Class<?> type:new Class<?>[]{RadioWidget.class,Universal.class})for(int x:ids(c,type))if(x==id)return true;return false;}
  static boolean isRadio(Context c,int id){for(int x:ids(c,RadioWidget.class))if(x==id)return true;return false;}
- static int zone(Context c,int id){return prefs(c).getInt("zone_"+id,1)==0?0:1;}
- static int pendingPreset(Context c,int id){return prefs(c).getInt("preset_"+id,-1);}
  static int lastPreset(Context c){SharedPreferences p=prefs(c);return SceneStore.target(c).equals(p.getString("lastTarget",""))?p.getInt("lastPreset",-1):-1;}
- static boolean action(String a){return java.util.Arrays.asList(UP,DOWN,LIVING,DINING,PLUS,MINUS,CHECK,TOGGLE,SELECT).contains(a);}
+ static boolean action(String a){return java.util.Arrays.asList(UP,PLUS,MINUS,CHECK,TOGGLE).contains(a);}
  static void refreshAll(Context c){
   if(!exists(c))return;AppWidgetManager m=AppWidgetManager.getInstance(c);
   for(int id:ids(c,RadioWidget.class))m.updateAppWidget(id,render(c,id,false));
@@ -27,7 +25,7 @@ public class RadioWidget extends AppWidgetProvider {
  static void store(Context c,RadioControl.State s,Capabilities profile,Network n){
   SharedPreferences.Editor e=prefs(c).edit().putLong("at",System.currentTimeMillis()).putLong("network",n.getNetworkHandle()).putString("target",SceneStore.target(c)).putString("station",s.station(profile)).remove("error");
   for(int i=0;i<2;i++){e.putBoolean("on"+i,s.on[i]).putBoolean("fm"+i,s.fm(i));if(s.on[i]&&s.raw[i]>=0)e.putString("volume"+i,Protocol.volumeLabel(s.raw[i],s.scale[i]));else e.remove("volume"+i);}
-  if(s.tuner()>=0&&s.preset>0)e.putInt("lastPreset",s.preset).putString("lastTarget",SceneStore.target(c));
+  if(s.fm(1)&&s.preset>0)e.putInt("lastPreset",s.preset).putString("lastTarget",SceneStore.target(c));
   e.apply();refreshAll(c);
  }
  static void storeVolumes(Context c,RadioControl.State s,Network n){
@@ -47,28 +45,22 @@ public class RadioWidget extends AppWidgetProvider {
   boolean a=p.getBoolean("on0",false),b=p.getBoolean("on1",false);
   String va=p.getString("volume0","–"),vb=p.getString("volume1","–");
   if(!universal){
-   int zone=zone(c,id);boolean on=fresh&&p.getBoolean("fm"+zone,false);
-   String vol=zone==0?va:vb,zoneName=zone==0?"Wohnzimmer":"Esstisch";
+   boolean on=fresh&&p.getBoolean("fm1",false);
+   String vol=vb;
    String error=p.getString("error","");
    String state=!phase.isEmpty()?"…":n==null?"Offline":!error.isEmpty()?"Fehler":!fresh?"?":on?"An · "+vol:"Aus";
    set(v,R.id.radio_status,"Radio\n"+state,on&&phase.isEmpty()?ACTIVE:!fresh||!error.isEmpty()||!phase.isEmpty()?WARN:OFF);
-   v.setContentDescription(R.id.radio_status,"Radio "+zoneName+" "+state+(error.isEmpty()?"":" · "+error)+(phase.isEmpty()?"":" · "+phase));
+   v.setContentDescription(R.id.radio_status,"Radio "+state+(error.isEmpty()?"":" · "+error)+(phase.isEmpty()?"":" · "+phase));
    click(c,v,id,R.id.radio_status,TOGGLE);
-   boolean fm0=fresh&&p.getBoolean("fm0",false),fm1=fresh&&p.getBoolean("fm1",false);
-   String output=fm0&&fm1?"Wohnzimmer + Esstisch":fm0?"Wohnzimmer":fm1?"Esstisch":zoneName;
-   String station=fm0||fm1?p.getString("station","FM"):"FM";
-   if(pendingPreset(c,id)>0&&!on)station="P"+String.format(java.util.Locale.ROOT,"%02d",pendingPreset(c,id));
-   set(v,R.id.radio_station,station,fm0||fm1?ACTIVE:FG);
-   set(v,R.id.radio_zones,"("+output+")",fm0||fm1?FG:OFF);
-   v.setContentDescription(R.id.radio_station,"Radio Einstellungen · "+zoneName+" · "+station);
-   Intent edit=new Intent(c,RadioConfigActivity.class).setData(Uri.parse("onkyo://radio/config/"+id)).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-   PendingIntent editPI=PendingIntent.getActivity(c,id,edit,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-   v.setOnClickPendingIntent(R.id.radio_station,editPI);v.setOnClickPendingIntent(R.id.radio_zones,editPI);v.setOnClickPendingIntent(R.id.radio_settings_tile,editPI);
+   String station=on?p.getString("station","FM"):"FM";
+   set(v,R.id.radio_station,station,on?ACTIVE:OFF);
+   v.setContentDescription(R.id.radio_station,"Nächster FM-Sender · "+station);
+   click(c,v,id,R.id.radio_station,UP);
   }else{
    set(v,R.id.volume_living,"Wohnzimmer"+(fresh?(a?"  "+va:"  Aus"):"  –"),fresh&&a?ACTIVE:OFF);
    set(v,R.id.volume_dining,"Esstisch"+(fresh?(b?"  "+vb:"  Aus"):"  –"),fresh&&b?ACTIVE:OFF);
   }
-  int volumeColor=fresh&&(a||b)?ACTIVE:OFF;
+  int volumeColor=fresh&&(universal?(a||b):p.getBoolean("fm1",false))?ACTIVE:OFF;
   set(v,R.id.radio_plus,"+",volumeColor);set(v,R.id.radio_minus,"−",volumeColor);
   click(c,v,id,R.id.radio_plus,PLUS);click(c,v,id,R.id.radio_minus,MINUS);
   String error=p.getString("error","");String status=!phase.isEmpty()?phase:n==null?(RemoteVpn.selected(c)?RemoteVpn.status(c):"Offline · tippen zum Prüfen"):!error.isEmpty()?error:fresh?(a||b?"Verbunden":"Beide Zonen aus"):"Status prüfen";
