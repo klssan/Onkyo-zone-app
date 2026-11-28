@@ -33,7 +33,7 @@ public class MainActivity extends Activity {
  void weighted(LinearLayout r,View v,int h){r.addView(v,new LinearLayout.LayoutParams(0,h<0?h:dp(h),1));}
  void gap(LinearLayout r,int h){add(r,new View(this),1,h);}
  void hgap(LinearLayout r,int w){add(r,new View(this),w,1);}
- @Override public void onCreate(Bundle b){super.onCreate(b);Diagnostics.open(getFilesDir());Diagnostics.event("APP","v0.8.6 Android API="+Build.VERSION.SDK_INT+" screenDp="+getResources().getConfiguration().screenWidthDp+"x"+getResources().getConfiguration().screenHeightDp);prefs=getSharedPreferences("config",MODE_PRIVATE);
+ @Override public void onCreate(Bundle b){super.onCreate(b);Diagnostics.open(getFilesDir());Diagnostics.event("APP","v0.8.7 Android API="+Build.VERSION.SDK_INT+" screenDp="+getResources().getConfiguration().screenWidthDp+"x"+getResources().getConfiguration().screenHeightDp);prefs=getSharedPreferences("config",MODE_PRIVATE);
   getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
   LinearLayout root=col();root.setBackgroundColor(BG);root.setPadding(dp(8),dp(4),dp(8),dp(4));dashboard=root;setContentView(root);
   LinearLayout head=row();ImageView brand=new ImageView(this);brand.setImageResource(R.drawable.dz_logo);brand.setContentDescription("Onkyo dahoam");add(head,brand,25,25);hgap(head,4);

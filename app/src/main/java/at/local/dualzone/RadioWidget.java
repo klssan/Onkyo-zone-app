@@ -54,12 +54,16 @@ public class RadioWidget extends AppWidgetProvider {
    set(v,R.id.radio_status,"Radio\n"+state,on&&phase.isEmpty()?ACTIVE:!fresh||!error.isEmpty()||!phase.isEmpty()?WARN:OFF);
    v.setContentDescription(R.id.radio_status,"Radio "+zoneName+" "+state+(error.isEmpty()?"":" · "+error)+(phase.isEmpty()?"":" · "+phase));
    click(c,v,id,R.id.radio_status,TOGGLE);
-   String station=on?p.getString("station","FM"):zoneName;
+   boolean fm0=fresh&&p.getBoolean("fm0",false),fm1=fresh&&p.getBoolean("fm1",false);
+   String output=fm0&&fm1?"Wohnzimmer + Esstisch":fm0?"Wohnzimmer":fm1?"Esstisch":zoneName;
+   String station=fm0||fm1?p.getString("station","FM"):"FM";
    if(pendingPreset(c,id)>0&&!on)station="P"+String.format(java.util.Locale.ROOT,"%02d",pendingPreset(c,id));
-   set(v,R.id.radio_station,station,on?ACTIVE:FG);
+   set(v,R.id.radio_station,station,fm0||fm1?ACTIVE:FG);
+   set(v,R.id.radio_zones,"("+output+")",fm0||fm1?FG:OFF);
    v.setContentDescription(R.id.radio_station,"Radio Einstellungen · "+zoneName+" · "+station);
    Intent edit=new Intent(c,RadioConfigActivity.class).setData(Uri.parse("onkyo://radio/config/"+id)).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-   v.setOnClickPendingIntent(R.id.radio_station,PendingIntent.getActivity(c,id,edit,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT));
+   PendingIntent editPI=PendingIntent.getActivity(c,id,edit,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+   v.setOnClickPendingIntent(R.id.radio_station,editPI);v.setOnClickPendingIntent(R.id.radio_zones,editPI);v.setOnClickPendingIntent(R.id.radio_settings_tile,editPI);
   }else{
    set(v,R.id.volume_living,"Wohnzimmer"+(fresh?(a?"  "+va:"  Aus"):"  –"),fresh&&a?ACTIVE:OFF);
    set(v,R.id.volume_dining,"Esstisch"+(fresh?(b?"  "+vb:"  Aus"):"  –"),fresh&&b?ACTIVE:OFF);

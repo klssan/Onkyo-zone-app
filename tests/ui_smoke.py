@@ -29,7 +29,7 @@ def wait_until(predicate, description):
     for _ in range(8):
         last=nodes()
         result=predicate(last)
-        if result:
+        if result is not None and result is not False:
             return result
         time.sleep(1)
     visible=[(n.get("text"),n.get("content-desc"),n.get("class")) for n in last]

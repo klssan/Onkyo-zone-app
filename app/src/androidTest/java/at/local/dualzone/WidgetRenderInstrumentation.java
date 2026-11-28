@@ -36,7 +36,7 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
    View radio=RadioWidget.render(c,123,false).apply(c,new FrameLayout(c));
    require(value(radio,R.id.radio_status).startsWith("Radio")&&value(radio,R.id.radio_plus).equals("+"),"radio controls");
    radio.measure(View.MeasureSpec.makeMeasureSpec(Math.round(128*d),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(128*d),View.MeasureSpec.EXACTLY));radio.layout(0,0,Math.round(128*d),Math.round(128*d));
-   for(int item:new int[]{R.id.radio_status,R.id.radio_station,R.id.radio_plus,R.id.radio_minus})require(radio.findViewById(item).getHeight()>0&&radio.findViewById(item).getWidth()>0,"radio button layout");
+   for(int item:new int[]{R.id.radio_status,R.id.radio_station,R.id.radio_zones,R.id.radio_plus,R.id.radio_minus})require(radio.findViewById(item).getHeight()>0&&radio.findViewById(item).getWidth()>0,"radio button layout");
    require(radio.findViewById(R.id.radio_status).getTop()==radio.findViewById(R.id.radio_plus).getTop(),"aligned radio row");
    View universal=RadioWidget.render(c,124,true).apply(c,new FrameLayout(c));require(value(universal,R.id.volume_living).contains("Wohnzimmer")&&value(universal,R.id.volume_dining).contains("Esstisch"),"two aligned volume labels");
    for(int zone=0;zone<2;zone++){
