@@ -34,7 +34,9 @@ public final class WidgetRenderInstrumentation extends Instrumentation {
    require(small.findViewById(R.id.scene_name).getHeight()>0&&small.findViewById(R.id.scene_status).getHeight()>0,"compact title and status");
    require(((TextView)small.findViewById(R.id.scene_name)).getTextSize()>((TextView)small.findViewById(R.id.scene_status)).getTextSize(),"title more prominent");
    View radio=RadioWidget.render(c,123,false).apply(c,new FrameLayout(c));
-   require(value(radio,R.id.radio_status).startsWith("Radio")&&value(radio,R.id.radio_plus).equals("+"),"radio controls");
+   require(!value(radio,R.id.radio_status).contains("Radio")&&value(radio,R.id.radio_plus).equals("+"),"compact power status");
+   require(((TextView)radio.findViewById(R.id.radio_status)).getCompoundDrawables()[1]!=null,"power icon");
+   require(radio.findViewById(R.id.radio_station) instanceof ImageView&&((ImageView)radio.findViewById(R.id.radio_station)).getDrawable()!=null,"centered radio icon");
    radio.measure(View.MeasureSpec.makeMeasureSpec(Math.round(128*d),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(128*d),View.MeasureSpec.EXACTLY));radio.layout(0,0,Math.round(128*d),Math.round(128*d));
    for(int item:new int[]{R.id.radio_status,R.id.radio_station,R.id.radio_plus,R.id.radio_minus})require(radio.findViewById(item).getHeight()>0&&radio.findViewById(item).getWidth()>0,"radio button layout");
    require(radio.findViewById(R.id.radio_status).getTop()==radio.findViewById(R.id.radio_plus).getTop(),"aligned radio row");

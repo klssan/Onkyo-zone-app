@@ -49,11 +49,13 @@ public class RadioWidget extends AppWidgetProvider {
    String vol=vb;
    String error=p.getString("error","");
    String state=!phase.isEmpty()?"…":n==null?"Offline":!error.isEmpty()?"Fehler":!fresh?"?":on?"An · "+vol:"Aus";
-   set(v,R.id.radio_status,"Radio\n"+state,on&&phase.isEmpty()?ACTIVE:!fresh||!error.isEmpty()||!phase.isEmpty()?WARN:OFF);
+   int powerColor=on&&phase.isEmpty()?ACTIVE:!fresh||!error.isEmpty()||!phase.isEmpty()?WARN:OFF;
+   set(v,R.id.radio_status,state,powerColor);
+   v.setTextViewCompoundDrawables(R.id.radio_status,0,powerColor==ACTIVE?R.drawable.radio_power_on:powerColor==WARN?R.drawable.radio_power_warn:R.drawable.radio_power_off,0,0);
    v.setContentDescription(R.id.radio_status,"Radio "+state+(error.isEmpty()?"":" · "+error)+(phase.isEmpty()?"":" · "+phase));
    click(c,v,id,R.id.radio_status,TOGGLE);
    String station=on?p.getString("station","FM"):"FM";
-   set(v,R.id.radio_station,station,on?ACTIVE:OFF);
+   v.setImageViewResource(R.id.radio_station,on?R.drawable.radio_receiver_on:R.drawable.radio_receiver_off);
    v.setContentDescription(R.id.radio_station,"Nächster FM-Sender · "+station);
    click(c,v,id,R.id.radio_station,UP);
   }else{
