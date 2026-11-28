@@ -16,6 +16,8 @@ public class RadioControlTest {
   RadioControl.adjust(s,w,3);check(writes.equals(Arrays.asList("ZVL62"))&&s.raw[1]==98);writes.clear();
   s.on[0]=true;s.source[0]="12";RadioControl.adjust(s,w,-1);check(writes.equals(Arrays.asList("MVL31","ZVL60")));writes.clear();
   RadioControl.toggle(s,w,c,1);check(writes.equals(Arrays.asList("ZPW00")));writes.clear();
+  s.on[1]=true;s.source[1]="12";s.raw[1]=60;RadioControl.startFM(s,w,c,1);check(writes.equals(Arrays.asList("ZVL5A","SLZ24")));writes.clear();
+  s.source[1]="24";s.preset=7;c.presets.add(new Capabilities.Preset(9,1,"FM4",""));RadioControl.selectPreset(s,w,c,1,9);check(writes.equals(Arrays.asList("PRZ09")));writes.clear();
   s.on[0]=false;s.on[1]=false;RadioControl.adjust(s,w,1);check(writes.isEmpty());
   List<String> queries=new ArrayList<>();
   SceneExecutor.Wire standby=new SceneExecutor.Wire(){public String query(String prefix){queries.add(prefix);if(prefix.equals("PWR")||prefix.equals("ZPW"))return "00";if(prefix.equals("SLI")||prefix.equals("SLZ"))return "24";throw new AssertionError(prefix);}public void set(String a,String b,String c){throw new AssertionError(a);}};

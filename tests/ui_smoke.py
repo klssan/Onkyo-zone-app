@@ -89,7 +89,7 @@ def main():
     tap("Homescreen-Widgets")
     wait_for("Szene hinzufügen")
     wait_for("Lautstärke gemeinsam (2×1)")
-    wait_for("Radio (3×2)")
+    wait_for("Radio (2×2)")
     print("Android UI smoke test passed; widget menu reachable")
 
 def capture_failure():

@@ -147,7 +147,14 @@ public final class SceneService extends Service {
       if(profile==null)throw new LocalFailure("Geräteprofil nicht bestätigt",WidgetStatus.PROFILE_UNKNOWN);
       RadioControl.State state=RadioControl.read(wire,profile);
       if(!target.equals(SceneStore.target(this))||remote&&!network.equals(RemoteVpn.network(this)))throw new LocalFailure("Verbindung geändert · erneut tippen",null);
+      int zone=RadioWidget.zone(this,id),pending=RadioWidget.pendingPreset(this,id);
+      boolean select=false;int desired=-1;
       switch(radioAction){
+       case RadioWidget.TOGGLE:
+        if(state.fm(zone)){RadioControl.toggle(state,wire,profile,zone);}
+        else{desired=pending>0?pending:state.tuner()<0?RadioWidget.lastPreset(this):-1;RadioControl.startFM(state,wire,profile,zone);select=desired>0;}
+        break;
+       case RadioWidget.SELECT:desired=pending;select=desired>0&&state.fm(zone);break;
        case RadioWidget.UP:state=RadioControl.step(state,wire,profile,1);break;
        case RadioWidget.DOWN:state=RadioControl.step(state,wire,profile,-1);break;
        case RadioWidget.LIVING:RadioControl.toggle(state,wire,profile,0);break;
@@ -157,6 +164,11 @@ public final class SceneService extends Service {
        default:break;
       }
       if(RadioWidget.UP.equals(radioAction)||RadioWidget.DOWN.equals(radioAction))RadioControl.readTuner(state,wire);else if(!checkOnly)state=RadioControl.read(wire,profile);
+      if(select){
+       RadioControl.selectPreset(state,wire,profile,zone,desired);RadioControl.readTuner(state,wire);
+       if(state.preset!=desired)throw new IOException("Radiospeicherplatz nicht bestätigt");
+       if(pending==desired&&RadioWidget.pendingPreset(this,id)==pending)RadioWidget.prefs(this).edit().remove("preset_"+id).apply();
+      }
       RadioWidget.store(this,state,profile,network);return 0;
      }
      if(checkOnly)return 0; // Read-only check: no source, volume or power writes.

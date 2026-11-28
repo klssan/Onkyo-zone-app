@@ -37,16 +37,20 @@ final class RadioControl {
   if(c.hasSelectors&&!c.sources(i).containsKey("24"))throw new IOException("FM nicht verfügbar");
   int other=1-i;
   if(s.on[other]&&(s.effective(other).equals("25")||i==0&&s.source[1].equals("80")&&!s.fm(1)))throw new IOException("Andere Zone nutzt gemeinsame Quelle");
-  if(!s.on[i]){
-   w.set(POWER[i]+"01",POWER[i],"01");
-   int volume=Math.min(START_VOLUME*s.scale[i],s.max[i]);String v=Protocol.hex(volume);
-   w.set(VOLUME[i]+v,VOLUME[i],v);
-  }
+  if(!s.on[i])w.set(POWER[i]+"01",POWER[i],"01");
+  int volume=Math.min(START_VOLUME*s.scale[i],s.max[i]);String v=Protocol.hex(volume);
+  if(!s.on[i]||s.raw[i]!=volume)w.set(VOLUME[i]+v,VOLUME[i],v);
   if(!s.source[i].equals("24"))w.set(SOURCE[i]+"24",SOURCE[i],"24");
  }
  static void toggle(State s,SceneExecutor.Wire w,Capabilities c,int i)throws IOException{
   if(s.fm(i)){w.set(POWER[i]+"00",POWER[i],"00");return;}
   startFM(s,w,c,i);
+ }
+ static void selectPreset(State s,SceneExecutor.Wire w,Capabilities c,int zone,int preset)throws IOException{
+  if(preset<1||preset>40||!s.fm(zone))return;
+  if(c.hasPresets){boolean found=false;for(Capabilities.Preset p:c.presets)if(p.band==1&&p.number==preset){found=true;break;}if(!found)throw new IOException("Radiospeicherplatz unbekannt");}
+  int i=s.tuner();if(i<0)throw new IOException("FM nicht bestätigt");
+  if(s.preset!=preset){String hex=Protocol.hex(preset);w.set(PRESET[i]+hex,PRESET[i],hex);}
  }
  static int nextPreset(Capabilities c,int current,int direction){
   TreeSet<Integer> set=new TreeSet<>();for(Capabilities.Preset p:c.presets)if(p.band==1)set.add(p.number);
